@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -246,7 +245,6 @@ func (h *Handler) DeleteLoginSession(w http.ResponseWriter, r *http.Request, ps 
 //	  404: jsonError
 //	  500: jsonError
 func (h *Handler) VerifyUserCodeRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
 	challenge := stringsx.Coalesce(
 		r.URL.Query().Get("device_challenge"),
 		r.URL.Query().Get("challenge"),
@@ -276,27 +274,17 @@ func (h *Handler) VerifyUserCodeRequest(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	client_id := req.GetClient().GetID()
+	clientId := req.GetClient().GetID()
 
-	grantRequest, err := h.r.ConsentManager().AcceptDeviceGrantRequest(r.Context(), challenge, p.UserCode, client_id, req.GetRequestedScopes(), req.GetRequestedAudience())
-
+	// req.GetID() is actually the DeviceCodeSignature
+	grantRequest, err := h.r.ConsentManager().AcceptDeviceGrantRequest(r.Context(), challenge, req.GetID(), clientId, req.GetRequestedScopes(), req.GetRequestedAudience())
 	if err != nil {
 		h.r.Writer().WriteError(w, r, errorsx.WithStack(err))
 		return
 	}
 
-	// Get and join the list of scopes requested from the device
-	var scopes []string = req.GetRequestedScopes()
-	scope_string := strings.Join(scopes, " ")
-
-	// As we dont have a redirectURI we know of, just pick the 1st one the client supports
-	response_redirect := ""
-	if len(req.GetClient().GetRedirectURIs()) > 0 {
-		response_redirect = req.GetClient().GetRedirectURIs()[0]
-	}
-
 	h.r.Writer().Write(w, r, &RequestHandlerResponse{
-		RedirectTo: urlx.SetQuery(h.c.OAuth2AuthURL(), url.Values{"state": {"fake-state"}, "device_verifier": {grantRequest.Verifier}, "client_id": {client_id}, "redirect_uri": {response_redirect}, "response_type": {"device_code"}, "scope": {scope_string}}).String(),
+		RedirectTo: urlx.SetQuery(h.c.OAuth2DeviceAuthorisationURL(), url.Values{"device_verifier": {grantRequest.Verifier}, "client_id": {clientId}}).String(),
 	})
 }
 

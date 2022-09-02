@@ -507,21 +507,19 @@ type DeviceGrantRequest struct {
 	// required: true
 	RequestedAudience sqlxx.StringSlicePipeDelimiter `json:"requested_access_token_audience" db:"requested_audience"`
 
+	// RequestURL is the original Device Grant URL requested.
+	RequestURL string `json:"request_url" db:"request_url"`
+
 	// Client is the OAuth 2.0 Client that initiated the request.
 	//
 	// required: true
 	Client   *client.Client `json:"client" db:"-"`
-	ClientID string         `json:"-" db:"client_id"`
+	ClientID sql.NullString `json:"-" db:"client_id"`
 
-	// DeviceCode is the OAuth 2.0 Device Authorization Grant Device Code that validate the non-interactive device.
+	// DeviceCodeSignature is the OAuth 2.0 Device Authorization Grant Device Code Signature (HMAC)
 	//
 	// required: true
-	DeviceCode string `json:"-" db:"device_code"`
-
-	// UserCode is the OAuth 2.0 Device Authorization Grant User Code that validate the user on the interactive device.
-	//
-	// required: true
-	UserCode string `json:"-" db:"user_code"`
+	DeviceCodeSignature string `json:"-" db:"device_code_signature"`
 
 	CSRF     string `json:"-" db:"csrf"`
 	Verifier string `json:"-" db:"verifier"`
@@ -534,8 +532,18 @@ func (_ DeviceGrantRequest) TableName() string {
 	return "hydra_oauth2_device_grant_request"
 }
 
+func (r *DeviceGrantRequest) BeforeSave(_ *pop.Connection) error {
+	if r.Client != nil {
+		r.ClientID = sql.NullString{
+			Valid:  true,
+			String: r.Client.OutfacingID,
+		}
+	}
+	return nil
+}
+
 func (r *DeviceGrantRequest) AfterFind(c *pop.Connection) error {
-	if r.ClientID != "" {
+	if r.ClientID.Valid {
 		r.Client = &client.Client{}
 		return sqlcon.HandleError(c.Where("id = ?", r.ClientID).First(r.Client))
 	}

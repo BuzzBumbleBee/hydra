@@ -58,7 +58,7 @@ type Manager interface {
 	ConfirmLoginSession(ctx context.Context, id string, authTime time.Time, subject string, remember bool) error
 
 	CreateDeviceGrantRequest(ctx context.Context, req *DeviceGrantRequest) error
-	AcceptDeviceGrantRequest(ctx context.Context, challenge string, user_code string, client_id string, requested_scopes fosite.Arguments, requested_aud fosite.Arguments) (*DeviceGrantRequest, error)
+	AcceptDeviceGrantRequest(ctx context.Context, challenge string, device_code_signature string, client_id string, requested_scopes fosite.Arguments, requested_aud fosite.Arguments) (*DeviceGrantRequest, error)
 	GetDeviceGrantRequestByVerifier(ctx context.Context, verifier string) (*DeviceGrantRequest, error)
 	VerifyAndInvalidateDeviceGrantRequest(ctx context.Context, verifier string) (*DeviceGrantRequest, error)
 

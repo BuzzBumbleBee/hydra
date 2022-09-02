@@ -384,7 +384,7 @@ func (p *Provider) DeviceUrl() *url.URL {
 }
 
 func (p *Provider) DeviceDoneURL() *url.URL {
-	return urlRoot(p.p.RequestURIF(KeyDeviceDoneURL, p.publicFallbackURL("oauth2/fallbacks/logout/callback")))
+	return urlRoot(p.p.RequestURIF(KeyDeviceDoneURL, p.publicFallbackURL("oauth2/fallbacks/device/done")))
 }
 
 func (p *Provider) PublicURL() *url.URL {

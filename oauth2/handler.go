@@ -120,26 +120,51 @@ func (h *Handler) SetRoutes(admin *x.RouterAdmin, public *x.RouterPublic, corsMi
 	public.Handler("GET", UserinfoPath, corsMiddleware(http.HandlerFunc(h.UserinfoHandler)))
 	public.Handler("POST", UserinfoPath, corsMiddleware(http.HandlerFunc(h.UserinfoHandler)))
 
-	public.POST(DeviceAuthPath, h.DeviceAuthHandler)
-	public.GET(h.c.DeviceInternalURL().Path, h.DeviceGranHandler)
+	public.GET(DeviceAuthPath, h.DeviceAuthGetHandler)
+	// This is only a shorthand to avoid people to type a long url;
+	public.GET(h.c.DeviceInternalURL().Path, h.DeviceAuthGetHandler)
+	public.POST(DeviceAuthPath, h.DeviceAuthPostHandler)
 
 	admin.POST(IntrospectPath, h.IntrospectHandler)
 	admin.POST(FlushPath, h.FlushHandler)
 	admin.DELETE(DeleteTokensPath, h.DeleteHandler)
 }
 
-func (h *Handler) DeviceGranHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-
-	err := h.r.ConsentStrategy().ForwardDeviceGrantRequest(w, r)
+func (h *Handler) DeviceAuthGetHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var ctx = r.Context()
+	request, err := h.r.OAuth2Provider().NewDeviceAuthorizeGetRequest(ctx, r)
 	if err != nil {
 		h.r.Writer().WriteError(w, r, err)
+		return
 	}
+
+	session, err := h.r.ConsentStrategy().HandleOAuth2DeviceAuthorizationRequest(w, r, request)
+	if errors.Is(err, consent.ErrAbortOAuth2Request) {
+		x.LogAudit(r, nil, h.r.AuditLogger())
+		// do nothing
+		return
+	} else if err != nil {
+		x.LogError(r, err, h.r.Logger())
+		h.r.Writer().WriteError(w, r, err)
+		return
+	}
+
+	for _, scope := range session.GrantedScope {
+		request.GrantScope(scope)
+	}
+
+	for _, audience := range session.GrantedAudience {
+		request.GrantAudience(audience)
+	}
+
+	// Device flow is done, let's redirect the user back to the
+	//
+	http.Redirect(w, r, h.c.DeviceDoneURL().String(), http.StatusFound)
 }
 
-func (h *Handler) DeviceAuthHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (h *Handler) DeviceAuthPostHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var ctx = r.Context()
-	request, err := h.r.OAuth2Provider().NewDeviceAuthorizeRequest(ctx, r)
-
+	request, err := h.r.OAuth2Provider().NewDeviceAuthorizePostRequest(ctx, r)
 	if err != nil {
 		h.r.Writer().WriteError(w, r, err)
 		return

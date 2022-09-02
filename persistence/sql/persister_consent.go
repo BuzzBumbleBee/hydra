@@ -167,7 +167,7 @@ func (p *Persister) CreateDeviceGrantRequest(ctx context.Context, req *consent.D
 	return errorsx.WithStack(p.Connection(ctx).Create(req))
 }
 
-func (p *Persister) AcceptDeviceGrantRequest(ctx context.Context, challenge string, user_code string, client_id string, requested_scopes fosite.Arguments, requested_aud fosite.Arguments) (*consent.DeviceGrantRequest, error) {
+func (p *Persister) AcceptDeviceGrantRequest(ctx context.Context, challenge string, device_code_signature string, client_id string, requested_scopes fosite.Arguments, requested_aud fosite.Arguments) (*consent.DeviceGrantRequest, error) {
 	var dgr consent.DeviceGrantRequest
 	return &dgr, p.transaction(ctx, func(ctx context.Context, c *pop.Connection) error {
 		if err := c.Where("challenge = ?", challenge).First(&dgr); err != nil {
@@ -176,8 +176,11 @@ func (p *Persister) AcceptDeviceGrantRequest(ctx context.Context, challenge stri
 
 		dgr.Accepted = true
 		dgr.AcceptedAt = sqlxx.NullTime(time.Now())
-		dgr.UserCode = user_code
-		dgr.ClientID = client_id
+		dgr.DeviceCodeSignature = device_code_signature
+		dgr.ClientID = sql.NullString{
+			Valid:  true,
+			String: client_id,
+		}
 		dgr.RequestedScope = sqlxx.StringSlicePipeDelimiter(requested_scopes)
 		dgr.RequestedAudience = sqlxx.StringSlicePipeDelimiter(requested_aud)
 		return c.Update(&dgr)
