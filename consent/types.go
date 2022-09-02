@@ -519,7 +519,7 @@ type DeviceGrantRequest struct {
 	// DeviceCodeSignature is the OAuth 2.0 Device Authorization Grant Device Code Signature (HMAC)
 	//
 	// required: true
-	DeviceCodeSignature string `json:"-" db:"device_code_signature"`
+	DeviceCodeSignature sql.NullString `json:"-" db:"device_code_signature"`
 
 	CSRF     string `json:"-" db:"csrf"`
 	Verifier string `json:"-" db:"verifier"`

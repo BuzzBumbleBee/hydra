@@ -1083,7 +1083,7 @@ func (s *DefaultStrategy) verifyDeviceAndUnlock(w http.ResponseWriter, r *http.R
 		return nil, errorsx.WithStack(fosite.ErrInvalidGrant.WithHint("The OAuth 2.0 Client ID from this request does not match the one from the authorize request."))
 	}
 
-	err = s.r.OAuth2Storage().CreateDeviceCodeSession(ctx, session.DeviceCodeSignature, req.Sanitize(nil))
+	err = s.r.OAuth2Storage().CreateDeviceCodeSession(ctx, session.DeviceCodeSignature.String, req)
 	if err != nil {
 		return nil, errorsx.WithStack(err)
 	}

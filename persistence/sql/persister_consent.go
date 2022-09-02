@@ -176,7 +176,10 @@ func (p *Persister) AcceptDeviceGrantRequest(ctx context.Context, challenge stri
 
 		dgr.Accepted = true
 		dgr.AcceptedAt = sqlxx.NullTime(time.Now())
-		dgr.DeviceCodeSignature = device_code_signature
+		dgr.DeviceCodeSignature = sql.NullString{
+			Valid:  true,
+			String: device_code_signature,
+		}
 		dgr.ClientID = sql.NullString{
 			Valid:  true,
 			String: client_id,
@@ -190,7 +193,7 @@ func (p *Persister) AcceptDeviceGrantRequest(ctx context.Context, challenge stri
 func (p *Persister) VerifyAndInvalidateDeviceGrantRequest(ctx context.Context, verifier string) (*consent.DeviceGrantRequest, error) {
 	var d consent.DeviceGrantRequest
 	return &d, p.transaction(ctx, func(ctx context.Context, c *pop.Connection) error {
-		if err := c.Where("verifier = ?", verifier).Select("challenge", "client_id").First(&d); err != nil {
+		if err := c.Where("verifier = ?", verifier).First(&d); err != nil {
 			return sqlcon.HandleError(err)
 		}
 
