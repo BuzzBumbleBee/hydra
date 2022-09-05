@@ -65,7 +65,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "OpenID Connect Discovery",
+        "summary": "# OpenID Connect Discovery",
         "operationId": "discoverOidcConfiguration",
         "responses": {
           "200": {
@@ -757,7 +757,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Get OAuth 2.0 Consent Request Information",
+        "summary": "# Get OAuth 2.0 Consent Request Information",
         "operationId": "adminGetOAuth2ConsentRequest",
         "parameters": [
           {
@@ -805,7 +805,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Accept an OAuth 2.0 Consent Request",
+        "summary": "# Accept an OAuth 2.0 Consent Request",
         "operationId": "adminAcceptOAuth2ConsentRequest",
         "parameters": [
           {
@@ -854,7 +854,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Reject an OAuth 2.0 Consent Request",
+        "summary": "# Reject an OAuth 2.0 Consent Request",
         "operationId": "adminRejectOAuth2ConsentRequest",
         "parameters": [
           {
@@ -887,6 +887,51 @@
         }
       }
     },
+    "/admin/oauth2/auth/requests/device/verify": {
+      "put": {
+        "description": "# Verifies a device grant request\nVerifies a device grant request",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "http",
+          "https"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminVerifyUserCodeRequest",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "device_challenge",
+            "in": "query",
+            "required": true
+          },
+          {
+            "name": "Body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/verifyUserCodeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/completedRequest"
+          },
+          "default": {
+            "description": "oAuth2ApiError",
+            "schema": {
+              "$ref": "#/definitions/oAuth2ApiError"
+            }
+          }
+        }
+      }
+    },
     "/admin/oauth2/auth/requests/login": {
       "get": {
         "description": "When an authorization code, hybrid, or implicit OAuth 2.0 Flow is initiated, ORY Hydra asks the login provider\n(sometimes called \"identity provider\") to authenticate the subject and then tell ORY Hydra now about it. The login\nprovider is an web-app you write and host, and it must be able to authenticate (\"show the subject a login screen\")\na subject (in OAuth2 the proper name for subject is \"resource owner\").\n\nThe authentication challenge is appended to the login provider URL to which the subject's user-agent (browser) is redirected to. The login\nprovider uses that challenge to fetch information on the OAuth2 request and then accept or reject the requested authentication process.",
@@ -903,7 +948,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Get an OAuth 2.0 Login Request",
+        "summary": "# Get an OAuth 2.0 Login Request",
         "operationId": "adminGetOAuth2LoginRequest",
         "parameters": [
           {
@@ -951,7 +996,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Accept an OAuth 2.0 Login Request",
+        "summary": "# Accept an OAuth 2.0 Login Request",
         "operationId": "adminAcceptOAuth2LoginRequest",
         "parameters": [
           {
@@ -1000,7 +1045,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Reject an OAuth 2.0 Login Request",
+        "summary": "# Reject an OAuth 2.0 Login Request",
         "operationId": "adminRejectOAuth2LoginRequest",
         "parameters": [
           {
@@ -1046,7 +1091,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Get an OAuth 2.0 Logout Request",
+        "summary": "# Get an OAuth 2.0 Logout Request",
         "operationId": "adminGetOAuth2LogoutRequest",
         "parameters": [
           {
@@ -1091,7 +1136,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Accept an OAuth 2.0 Logout Request",
+        "summary": "# Accept an OAuth 2.0 Logout Request",
         "operationId": "adminAcceptOAuth2LogoutRequest",
         "parameters": [
           {
@@ -1130,7 +1175,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Reject an OAuth 2.0 Logout Request",
+        "summary": "# Reject an OAuth 2.0 Logout Request",
         "operationId": "adminRejectOAuth2LogoutRequest",
         "parameters": [
           {
@@ -1176,7 +1221,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "List OAuth 2.0 Consent Sessions of a Subject",
+        "summary": "# List OAuth 2.0 Consent Sessions of a Subject",
         "operationId": "adminListOAuth2SubjectConsentSessions",
         "parameters": [
           {
@@ -1229,7 +1274,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Revokes OAuth 2.0 Consent Sessions of a Subject for a Specific OAuth 2.0 Client",
+        "summary": "# Revokes OAuth 2.0 Consent Sessions of a Subject for a Specific OAuth 2.0 Client",
         "operationId": "adminRevokeOAuth2ConsentSessions",
         "parameters": [
           {
@@ -1281,7 +1326,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Invalidates All OAuth 2.0 Login Sessions of a Certain User",
+        "summary": "# Invalidates All OAuth 2.0 Login Sessions of a Certain User",
         "operationId": "adminRevokeOAuth2LoginSessions",
         "parameters": [
           {
@@ -1321,7 +1366,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Introspect OAuth2 Access or Refresh Tokens",
+        "summary": "# Introspect OAuth2 Access or Refresh Tokens",
         "operationId": "adminIntrospectOAuth2Token",
         "parameters": [
           {
@@ -1367,7 +1412,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Delete OAuth2 Access Tokens from a Client",
+        "summary": "# Delete OAuth2 Access Tokens from a Client",
         "operationId": "adminDeleteOAuth2Token",
         "parameters": [
           {
@@ -1647,7 +1692,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "The OAuth 2.0 Authorize Endpoint",
+        "summary": "# The OAuth 2.0 Authorize Endpoint",
         "operationId": "performOAuth2AuthorizationFlow",
         "responses": {
           "302": {
@@ -1869,7 +1914,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "Revoke an OAuth2 Access or Refresh Token",
+        "summary": "# Revoke an OAuth2 Access or Refresh Token",
         "operationId": "revokeOAuth2Token",
         "parameters": [
           {
@@ -1902,7 +1947,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "OpenID Connect Front- or Back-channel Enabled Logout",
+        "summary": "# OpenID Connect Front- or Back-channel Enabled Logout",
         "operationId": "performOidcFrontOrBackChannelLogout",
         "responses": {
           "302": {
@@ -1935,7 +1980,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "The OAuth 2.0 Token Endpoint",
+        "summary": "# The OAuth 2.0 Token Endpoint",
         "operationId": "performOAuth2TokenFlow",
         "parameters": [
           {
@@ -1999,7 +2044,7 @@
         "tags": [
           "v0alpha2"
         ],
-        "summary": "OpenID Connect Userinfo",
+        "summary": "# OpenID Connect Userinfo",
         "operationId": "getOidcUserInfo",
         "responses": {
           "200": {
@@ -2149,6 +2194,13 @@
     "StringSliceJSONFormat": {
       "type": "array",
       "title": "StringSliceJSONFormat represents []string{} which is encoded to/from JSON for SQL storage.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "StringSlicePipeDelimiter": {
+      "type": "array",
+      "title": "StringSlicePipeDelimiter de/encodes the string slice to/from a SQL string.",
       "items": {
         "type": "string"
       }
@@ -2338,6 +2390,38 @@
           "description": "The \"subject\" identifies the principal that is the subject of the JWT.",
           "type": "string",
           "example": "mike@example.com"
+        }
+      }
+    },
+    "deviceGrantRequest": {
+      "type": "object",
+      "title": "Contains information on an ongoing device grant request.",
+      "required": [
+        "challenge",
+        "requested_scope",
+        "requested_access_token_audience",
+        "client"
+      ],
+      "properties": {
+        "challenge": {
+          "description": "ID is the identifier (\"device challenge\") of the device grant request. It is used to\nidentify the session.",
+          "type": "string"
+        },
+        "client": {
+          "$ref": "#/definitions/oAuth2Client"
+        },
+        "handled_at": {
+          "$ref": "#/definitions/nullTime"
+        },
+        "request_url": {
+          "description": "RequestURL is the original Device Grant URL requested.",
+          "type": "string"
+        },
+        "requested_access_token_audience": {
+          "$ref": "#/definitions/StringSlicePipeDelimiter"
+        },
+        "requested_scope": {
+          "$ref": "#/definitions/StringSlicePipeDelimiter"
         }
       }
     },
@@ -3187,6 +3271,10 @@
             "type": "string"
           }
         },
+        "device_authorization_endpoint": {
+          "description": "URL of the authorization server's device authorization endpoint",
+          "type": "string"
+        },
         "end_session_endpoint": {
           "description": "URL at the OP to which an RP can perform a redirect to request that the End-User be logged out at the OP.",
           "type": "string"
@@ -3649,6 +3737,15 @@
           "description": "The \"set\" is basically a name for a group(set) of keys. Will be the same as \"issuer\" in grant.",
           "type": "string",
           "example": "https://jwt-idp.example.com"
+        }
+      }
+    },
+    "verifyUserCodeRequest": {
+      "description": "Contains information on an device verification",
+      "type": "object",
+      "properties": {
+        "user_code": {
+          "type": "string"
         }
       }
     },

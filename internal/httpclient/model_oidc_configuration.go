@@ -289,38 +289,6 @@ func (o *OidcConfiguration) SetCodeChallengeMethodsSupported(v []string) {
 	o.CodeChallengeMethodsSupported = v
 }
 
-// GetDeviceAuthorizationEndpoint returns the DeviceAuthorizationEndpoint field value if set, zero value otherwise.
-func (o *WellKnown) GetDeviceAuthorizationEndpoint() string {
-	if o == nil || o.DeviceAuthorizationEndpoint == nil {
-		var ret string
-		return ret
-	}
-	return *o.DeviceAuthorizationEndpoint
-}
-
-// GetDeviceAuthorizationEndpointOk returns a tuple with the DeviceAuthorizationEndpoint field value if set, nil otherwise
-// and a boolean to check if the value has been set.
-func (o *WellKnown) GetDeviceAuthorizationEndpointOk() (*string, bool) {
-	if o == nil || o.DeviceAuthorizationEndpoint == nil {
-		return nil, false
-	}
-	return o.DeviceAuthorizationEndpoint, true
-}
-
-// HasDeviceAuthorizationEndpoint returns a boolean if a field has been set.
-func (o *WellKnown) HasDeviceAuthorizationEndpoint() bool {
-	if o != nil && o.DeviceAuthorizationEndpoint != nil {
-		return true
-	}
-
-	return false
-}
-
-// SetDeviceAuthorizationEndpoint gets a reference to the given string and assigns it to the DeviceAuthorizationEndpoint field.
-func (o *WellKnown) SetDeviceAuthorizationEndpoint(v string) {
-	o.DeviceAuthorizationEndpoint = &v
-}
-
 // GetEndSessionEndpoint returns the EndSessionEndpoint field value if set, zero value otherwise.
 func (o *OidcConfiguration) GetEndSessionEndpoint() string {
 	if o == nil || o.EndSessionEndpoint == nil {

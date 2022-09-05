@@ -497,29 +497,3 @@ func (p *Persister) GetUserCodeSession(ctx context.Context, signature string, re
 func (p *Persister) DeleteUserCodeSession(ctx context.Context, signature string) error {
 	return p.deleteSessionBySignature(ctx, signature, sqlTableUserCode)
 }
-
-func (p *Persister) CreateDeviceCodeSession(ctx context.Context, signature string, req fosite.Requester) error {
-	err := p.createSession(ctx, signature, req, sqlTableDeviceCode)
-	return err
-}
-
-func (p *Persister) GetDeviceCodeSession(ctx context.Context, signature string, req fosite.Session) (fosite.Requester, error) {
-	return p.findSessionBySignature(ctx, signature, req, sqlTableDeviceCode)
-}
-
-func (p *Persister) DeleteDeviceCodeSession(ctx context.Context, signature string) error {
-	return p.deleteSessionBySignature(ctx, signature, sqlTableDeviceCode)
-}
-
-func (p *Persister) CreateUserCodeSession(ctx context.Context, signature string, req fosite.Requester) error {
-	err := p.createSession(ctx, signature, req, sqlTableUserCode)
-	return err
-}
-
-func (p *Persister) GetUserCodeSession(ctx context.Context, signature string, req fosite.Session) (fosite.Requester, error) {
-	return p.findSessionBySignature(ctx, signature, req, sqlTableUserCode)
-}
-
-func (p *Persister) DeleteUserCodeSession(ctx context.Context, signature string) error {
-	return p.deleteSessionBySignature(ctx, signature, sqlTableUserCode)
-}

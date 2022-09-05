@@ -22,10 +22,8 @@ package consent
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/ory/x/httprouterx"
@@ -53,7 +51,6 @@ const (
 	LogoutPath   = "/oauth2/auth/requests/logout"
 	DevicePath   = "/oauth2/auth/requests/device"
 	SessionsPath = "/oauth2/auth/sessions"
-	DevicePath   = "/oauth2/auth/requests/device"
 )
 
 func NewHandler(
@@ -898,20 +895,18 @@ type adminVerifyUserCodeRequest struct {
 // # Verifies a device grant request
 // Verifies a device grant request
 //
-//	Consumes:
-//	- application/json
+//		Consumes:
+//		- application/json
 //
-//	Produces:
-//	- application/json
+//		Produces:
+//		- application/json
 //
-//	Schemes: http, https
+//		Schemes: http, https
 //
-//	Responses:
-//	  200: completedRequest
-//    default: oAuth2ApiError
+//		Responses:
+//		  200: completedRequest
+//	   default: oAuth2ApiError
 func (h *Handler) adminVerifyUserCodeRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-	fmt.Println("adminVerifyUserCodeRequest ++")
 	challenge := stringsx.Coalesce(
 		r.URL.Query().Get("device_challenge"),
 		r.URL.Query().Get("challenge"),
@@ -921,8 +916,6 @@ func (h *Handler) adminVerifyUserCodeRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	fmt.Printf("adminVerifyUserCodeRequest challange : %v\n", challenge)
-
 	var p DeviceGrantVerifyUserCodeRequest
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
@@ -931,32 +924,28 @@ func (h *Handler) adminVerifyUserCodeRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	fmt.Printf("adminVerifyUserCodeRequest user code : %v\n", p.UserCode)
-
 	if p.UserCode == "" {
 		h.r.Writer().WriteError(w, r, errorsx.WithStack(fosite.ErrInvalidRequest.WithHint("Field 'user_code' must not be empty.")))
 		return
 	}
 
-	userCodeHash := h.r.OAuth2HMACStrategy().UserCodeSignature(r.Context(), p.UserCode)
-	req, err := h.r.OAuth2Storage().GetUserCodeSession(r.Context(), userCodeHash, &fosite.DefaultSession{})
+	userCodeSignature := h.r.OAuth2HMACStrategy().UserCodeSignature(r.Context(), p.UserCode)
+	req, err := h.r.OAuth2Storage().GetUserCodeSession(r.Context(), userCodeSignature, &fosite.DefaultSession{})
 	if err != nil {
 		h.r.Writer().WriteError(w, r, errorsx.WithStack(fosite.ErrNotFound.WithHint(`User code session not found`)))
 		return
 	}
 
-	fmt.Printf("adminVerifyUserCodeRequest session id : %v\n", req.GetID())
+	clientId := req.GetClient().GetID()
 
-	client_id := req.GetClient().GetID()
-
-	grantRequest, err := h.r.ConsentManager().AcceptDeviceGrantRequest(r.Context(), challenge, p.UserCode, client_id, req.GetRequestedScopes(), req.GetRequestedAudience())
-
+	// req.GetID() is actually the DeviceCodeSignature
+	grantRequest, err := h.r.ConsentManager().AcceptDeviceGrantRequest(r.Context(), challenge, req.GetID(), clientId, req.GetRequestedScopes(), req.GetRequestedAudience())
 	if err != nil {
 		h.r.Writer().WriteError(w, r, errorsx.WithStack(err))
 		return
 	}
 
 	h.r.Writer().Write(w, r, &RequestHandlerResponse{
-		RedirectTo: urlx.SetQuery(h.c.OAuth2DeviceAuthorisationURL(), url.Values{"device_verifier": {grantRequest.Verifier}, "client_id": {clientId}}).String(),
+		RedirectTo: urlx.SetQuery(h.c.OAuth2DeviceAuthorisationURL(r.Context()), url.Values{"device_verifier": {grantRequest.Verifier}, "client_id": {clientId}}).String(),
 	})
 }

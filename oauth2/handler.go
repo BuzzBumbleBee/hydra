@@ -65,8 +65,6 @@ const (
 	TokenPath             = "/oauth2/token" // #nosec G101
 	AuthPath              = "/oauth2/auth"
 	LogoutPath            = "/oauth2/sessions/logout"
-	DefaultDevicePath     = "/oauth2/fallbacks/device"
-	DefaultPostDevicePath = "/oauth2/fallbacks/device/done"
 
 	UserinfoPath  = "/userinfo"
 	WellKnownPath = "/.well-known/openid-configuration"
@@ -139,9 +137,8 @@ func (h *Handler) SetRoutes(admin *httprouterx.RouterAdmin, public *httprouterx.
 
 	public.GET(DeviceAuthPath, h.DeviceAuthGetHandler)
 	// This is only a shorthand to avoid people to type a long url;
-	public.GET(h.c.DeviceInternalURL().Path, h.DeviceAuthGetHandler)
+	public.GET(h.c.DeviceInternalURL(context.Background()).Path, h.DeviceAuthGetHandler)
 	public.POST(DeviceAuthPath, h.DeviceAuthPostHandler)
-	public.GET(h.c.DeviceInternalURL(context.Background()).Path, h.DeviceGranHandler)
 }
 
 func (h *Handler) DeviceAuthGetHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -152,7 +149,7 @@ func (h *Handler) DeviceAuthGetHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	session, err := h.r.ConsentStrategy().HandleOAuth2DeviceAuthorizationRequest(w, r, request)
+	session, err := h.r.ConsentStrategy().HandleOAuth2DeviceAuthorizationRequest(ctx, w, r, request)
 	if errors.Is(err, consent.ErrAbortOAuth2Request) {
 		x.LogAudit(r, nil, h.r.AuditLogger())
 		// do nothing
@@ -173,7 +170,7 @@ func (h *Handler) DeviceAuthGetHandler(w http.ResponseWriter, r *http.Request, _
 
 	// Device flow is done, let's redirect the user back to the
 	//
-	http.Redirect(w, r, h.c.DeviceDoneURL().String(), http.StatusFound)
+	http.Redirect(w, r, h.c.DeviceDoneURL(ctx).String(), http.StatusFound)
 }
 
 func (h *Handler) DeviceAuthPostHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -196,7 +193,7 @@ func (h *Handler) DeviceAuthPostHandler(w http.ResponseWriter, r *http.Request, 
 		h.r.Writer().WriteError(w, r, err)
 		return
 	}
-	h.r.OAuth2Provider().WriteDeviceAuthorizeResponse(w, request, resp)
+	h.r.OAuth2Provider().WriteDeviceAuthorizeResponse(ctx, w, request, resp)
 }
 
 // swagger:route GET /oauth2/sessions/logout v0alpha2 performOidcFrontOrBackChannelLogout

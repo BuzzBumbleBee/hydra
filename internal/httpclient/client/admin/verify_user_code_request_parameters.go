@@ -14,8 +14,6 @@ import (
 	"github.com/go-openapi/runtime"
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
-
-	"github.com/ory/hydra/internal/httpclient/models"
 )
 
 // NewVerifyUserCodeRequestParams creates a new VerifyUserCodeRequestParams object,

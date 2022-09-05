@@ -58,13 +58,6 @@ import (
 
 const (
 	CookieAuthenticationSIDName = "sid"
-<<<<<<< HEAD
-
-	cookieAuthenticationCSRFName = "oauth2_authentication_csrf"
-	cookieConsentCSRFName        = "oauth2_consent_csrf"
-	cookieDeviceGrantCSRFName    = "oauth2_device_grant_csrf"
-=======
->>>>>>> bumblebee/feat_dev_grants_2x
 )
 
 type DefaultStrategy struct {
@@ -139,7 +132,7 @@ func (s *DefaultStrategy) authenticationSession(ctx context.Context, w http.Resp
 	return session, nil
 }
 
-func (s *DefaultStrategy) requestAuthentication(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.AuthorizeRequester) error {
+func (s *DefaultStrategy) requestAuthentication(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.Requester) error {
 	prompt := stringsx.Splitx(req.GetRequestForm().Get("prompt"), " ")
 	if stringslice.Has(prompt, "login") {
 		return s.forwardAuthenticationRequest(ctx, w, r, req, "", time.Time{}, nil)
@@ -209,7 +202,7 @@ func (s *DefaultStrategy) getSubjectFromIDTokenHint(ctx context.Context, idToken
 	return sub, nil
 }
 
-func (s *DefaultStrategy) forwardAuthenticationRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.AuthorizeRequester, subject string, authenticatedAt time.Time, session *LoginSession) error {
+func (s *DefaultStrategy) forwardAuthenticationRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.Requester, subject string, authenticatedAt time.Time, session *LoginSession) error {
 	if (subject != "" && authenticatedAt.IsZero()) || (subject == "" && !authenticatedAt.IsZero()) {
 		return errorsx.WithStack(fosite.ErrServerError.WithHint("Consent strategy returned a non-empty subject with an empty auth date, or an empty subject with a non-empty auth date."))
 	}
@@ -1009,7 +1002,7 @@ func (s *DefaultStrategy) HandleOpenIDConnectLogout(ctx context.Context, w http.
 }
 
 func (s *DefaultStrategy) requestDevice(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.Requester) error {
-	return s.forwardDeviceRequest(w, r, req)
+	return s.forwardDeviceRequest(ctx, w, r, req)
 }
 
 func (s *DefaultStrategy) forwardDeviceRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.Requester) error {
@@ -1019,7 +1012,7 @@ func (s *DefaultStrategy) forwardDeviceRequest(ctx context.Context, w http.Respo
 	csrf := strings.Replace(uuid.New(), "-", "", -1)
 
 	// Generate the request URL
-	iu := s.c.OAuth2DeviceAuthorisationURL()
+	iu := s.c.OAuth2DeviceAuthorisationURL(ctx)
 	iu.RawQuery = r.URL.RawQuery
 
 	if err := s.r.ConsentManager().CreateDeviceGrantRequest(
@@ -1034,11 +1027,11 @@ func (s *DefaultStrategy) forwardDeviceRequest(ctx context.Context, w http.Respo
 		return errorsx.WithStack(err)
 	}
 
-	if err := createCsrfSession(w, r, s.r.CookieStore(), cookieDeviceGrantCSRFName, csrf, s.c.TLS(config.PublicInterface).Enabled(), s.c.CookieSameSiteMode(), s.c.CookieSameSiteLegacyWorkaround()); err != nil {
+	if err := createCsrfSession(w, r, s.r.Config(), s.r.CookieStore(ctx), s.r.Config().CookieNameDeviceVerifyCSRF(ctx), csrf); err != nil {
 		return errorsx.WithStack(err)
 	}
 
-	http.Redirect(w, r, urlx.SetQuery(s.c.DeviceUrl(), url.Values{"device_challenge": {challenge}}).String(), http.StatusFound)
+	http.Redirect(w, r, urlx.SetQuery(s.c.DeviceUrl(ctx), url.Values{"device_challenge": {challenge}}).String(), http.StatusFound)
 
 	// generate the verifier
 	return errorsx.WithStack(ErrAbortOAuth2Request)
@@ -1071,7 +1064,6 @@ func (s *DefaultStrategy) verifyDeviceAndUnlock(ctx context.Context, w http.Resp
 func (s *DefaultStrategy) HandleOAuth2AuthorizationRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.AuthorizeRequester) (*AcceptOAuth2ConsentRequest, error) {
 	authenticationVerifier := strings.TrimSpace(req.GetRequestForm().Get("login_verifier"))
 	consentVerifier := strings.TrimSpace(req.GetRequestForm().Get("consent_verifier"))
-	deviceVerifier := strings.TrimSpace(req.GetRequestForm().Get("device_verifier"))
 	if authenticationVerifier == "" && consentVerifier == "" {
 		// ok, we need to process this request and redirect to auth endpoint
 		return nil, s.requestAuthentication(ctx, w, r, req)
@@ -1111,7 +1103,7 @@ func (s *DefaultStrategy) ObfuscateSubjectIdentifier(ctx context.Context, cl fos
 	return subject, nil
 }
 
-func (s *DefaultStrategy) HandleOAuth2DeviceAuthorizationRequest(w http.ResponseWriter, r *http.Request, req fosite.DeviceAuthorizeRequester) (*HandledConsentRequest, error) {
+func (s *DefaultStrategy) HandleOAuth2DeviceAuthorizationRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.DeviceAuthorizeRequester) (*AcceptOAuth2ConsentRequest, error) {
 	authenticationVerifier := strings.TrimSpace(req.GetRequestForm().Get("login_verifier"))
 	consentVerifier := strings.TrimSpace(req.GetRequestForm().Get("consent_verifier"))
 	deviceVerifier := strings.TrimSpace(req.GetRequestForm().Get("device_verifier"))
@@ -1119,13 +1111,12 @@ func (s *DefaultStrategy) HandleOAuth2DeviceAuthorizationRequest(w http.Response
 	fmt.Printf("CookieNameDeviceVerifyCSRF : %v ", s.r.Config().CookieNameDeviceVerifyCSRF(r.Context()))
 	fmt.Printf("CookieStore : %v ", s.r.CookieStore(r.Context()))
 	fmt.Printf("Config : %v ", s.r.Config())
-	fmt.Printf("csrf : %v ", csrf)
-	
+
 	if deviceVerifier == "" && authenticationVerifier == "" && consentVerifier == "" {
 		// ok, we need to process this request and redirect to device auth endpoint
-		return nil, s.requestDevice(w, r, req)
+		return nil, s.requestDevice(ctx, w, r, req)
 	} else if authenticationVerifier == "" && consentVerifier == "" {
-		return nil, s.requestAuthentication(w, r, req)
+		return nil, s.requestAuthentication(ctx, w, r, req)
 	} else if consentVerifier == "" {
 		authSession, err := s.verifyAuthentication(w, r, req, authenticationVerifier)
 		if err != nil {
@@ -1133,16 +1124,16 @@ func (s *DefaultStrategy) HandleOAuth2DeviceAuthorizationRequest(w http.Response
 		}
 
 		// ok, we need to process this request and redirect to auth endpoint
-		return nil, s.requestConsent(w, r, req, authSession)
+		return nil, s.requestConsent(ctx, w, r, req, authSession)
 	}
 
-	_, err := s.verifyDeviceAndUnlock(w, r, req, deviceVerifier)
+	_, err := s.verifyDeviceAndUnlock(ctx, w, r, req, deviceVerifier)
 	if err != nil {
 		return nil, err
 	}
 
 	// Else
-	consentSession, err := s.verifyConsent(w, r, req, consentVerifier)
+	consentSession, err := s.verifyConsent(ctx, w, r, req, consentVerifier)
 	if err != nil {
 		return nil, err
 	}

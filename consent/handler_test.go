@@ -35,6 +35,7 @@ import (
 	"github.com/ory/x/pointerx"
 
 	"github.com/ory/hydra/consent"
+	"github.com/ory/hydra/oauth2"
 	"github.com/ory/hydra/x"
 	"github.com/ory/x/contextx"
 	"github.com/ory/x/sqlxx"
@@ -311,7 +312,7 @@ func TestVerifyDeviceLoginRequest(t *testing.T) {
 				}
 
 				userCodeHash := reg.OAuth2HMACStrategy().UserCodeSignature(tc.user_code)
-				deviceCodeHash := reg.OAuth2HMACStrategy().DeviceCodeSignature("AAABBBCCCDDD")
+				deviceCodeHash := reg.OAuth2HMACStrategy().DeviceCodeSignature(ctx, "AAABBBCCCDDD")
 
 				req := &fosite.AccessRequest{
 					GrantTypes: fosite.Arguments{"urn:ietf:params:oauth:grant-type:device_code"},

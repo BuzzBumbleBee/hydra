@@ -29,9 +29,6 @@ import (
 	"github.com/ory/hydra/client"
 	"github.com/ory/hydra/driver/config"
 	"github.com/ory/hydra/internal"
-	hydra "github.com/ory/hydra/internal/httpclient/client"
-	"github.com/ory/hydra/internal/httpclient/client/admin"
-	"github.com/ory/hydra/internal/httpclient/models"
 )
 
 func TestStrategyDeviceConsentNext(t *testing.T) {

@@ -39,7 +39,6 @@ const (
 	KeyOAuth2ClientRegistrationURL               = "webfinger.oidc_discovery.client_registration_url"
 	KeyOAuth2TokenURL                            = "webfinger.oidc_discovery.token_url" // #nosec G101
 	KeyOAuth2AuthURL                             = "webfinger.oidc_discovery.auth_url"
-	KeyOAuth2DeviceAuthorisationURL              = "webfinger.oidc_discovery.device_authorization_url"
 	KeyJWKSURL                                   = "webfinger.oidc_discovery.jwks_url"
 	KeyOIDCDiscoverySupportedClaims              = "webfinger.oidc_discovery.supported_claims"
 	KeyOIDCDiscoverySupportedScope               = "webfinger.oidc_discovery.supported_scope"
@@ -356,21 +355,6 @@ func (p *DefaultProvider) GetDeviceAuthTokenPollingInterval(ctx context.Context)
 	return p.p.DurationF(KeyDeviceAuthTokenPollingInterval, time.Second*5)
 }
 
-func (p *DefaultProvider) DeviceUrl(ctx context.Context) *url.URL {
-	return urlRoot(p.getProvider(ctx).URIF(KeyDeviceURL, p.publicFallbackURL(ctx, "oauth2/fallbacks/device")))
-}
-
-func (p *DefaultProvider) DeviceDoneURL(ctx context.Context) *url.URL {
-	return urlRoot(p.p.RequestURIF(KeyDeviceDoneURL, p.publicFallbackURL(ctx, "oauth2/fallbacks/logout/callback")))
-}
-
-func (p *DefaultProvider) SelfDeviceURL(ctx context.Context) *url.URL {
-	return urlRoot(p.getProvider(ctx).URIF(KeySelfDeviceURL, urlx.AppendPaths(p.PublicURL(ctx), "/device")))
-}
-func (p *DefaultProvider) OAuth2DeviceAuthorisationURL(ctx context.Context) *url.URL {
-	return p.p.RequestURIF(KeyOAuth2DeviceAuthorisationURL, urlx.AppendPaths(p.PublicURL(ctx), "/oauth2/device/auth"))
-}
-
 func (p *DefaultProvider) LoginURL(ctx context.Context) *url.URL {
 	return urlRoot(p.getProvider(ctx).URIF(KeyLoginURL, p.publicFallbackURL(ctx, "oauth2/fallbacks/login")))
 }
@@ -387,12 +371,12 @@ func (p *DefaultProvider) ErrorURL(ctx context.Context) *url.URL {
 	return urlRoot(p.getProvider(ctx).RequestURIF(KeyErrorURL, p.publicFallbackURL(ctx, "oauth2/fallbacks/error")))
 }
 
-func (p *DefaultProvider) DeviceUrl() *url.URL {
-	return urlRoot(p.getProvider(ctx).URIF(KeyDeviceURL, p.publicFallbackURL("oauth2/fallbacks/device")))
+func (p *DefaultProvider) DeviceUrl(ctx context.Context) *url.URL {
+	return urlRoot(p.getProvider(ctx).URIF(KeyDeviceURL, p.publicFallbackURL(ctx, "oauth2/fallbacks/device")))
 }
 
-func (p *DefaultProvider) DeviceDoneURL() *url.URL {
-	return urlRoot(p.getProvider(ctx).RequestURIF(KeyDeviceDoneURL, p.publicFallbackURL("oauth2/fallbacks/device/done")))
+func (p *DefaultProvider) DeviceDoneURL(ctx context.Context) *url.URL {
+	return urlRoot(p.getProvider(ctx).RequestURIF(KeyDeviceDoneURL, p.publicFallbackURL(ctx, "oauth2/fallbacks/device/done")))
 }
 
 func (p *DefaultProvider) PublicURL(ctx context.Context) *url.URL {
@@ -403,8 +387,8 @@ func (p *DefaultProvider) AdminURL(ctx context.Context) *url.URL {
 	return urlRoot(p.getProvider(ctx).RequestURIF(KeyAdminURL, p.fallbackURL(ctx, "/", p.host(AdminInterface), p.port(AdminInterface))))
 }
 
-func (p *DefaultProvider) DeviceInternalURL() *url.URL {
-	return urlRoot(p.getProvider(ctx).RequestURIF(KeyDeviceInternalURL, urlx.AppendPaths(p.PublicURL(), "/device")))
+func (p *DefaultProvider) DeviceInternalURL(ctx context.Context) *url.URL {
+	return urlRoot(p.getProvider(ctx).RequestURIF(KeyDeviceInternalURL, urlx.AppendPaths(p.PublicURL(ctx), "/device")))
 }
 
 func (p *DefaultProvider) IssuerURL(ctx context.Context) *url.URL {
@@ -424,7 +408,7 @@ func (p *DefaultProvider) OAuth2AuthURL(ctx context.Context) *url.URL {
 }
 
 func (p *DefaultProvider) OAuth2DeviceAuthorisationURL(ctx context.Context) *url.URL {
-	return p.getProvider(ctx).RequestURIF(KeyOAuth2DeviceAuthorisationURL, urlx.AppendPaths(p.PublicURL(), "/oauth2/device/auth"))
+	return p.getProvider(ctx).RequestURIF(KeyOAuth2DeviceAuthorisationURL, urlx.AppendPaths(p.PublicURL(ctx), "/oauth2/device/auth"))
 }
 
 func (p *DefaultProvider) JWKSURL(ctx context.Context) *url.URL {

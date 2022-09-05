@@ -11,8 +11,6 @@ import (
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
-
-	"github.com/ory/hydra/internal/httpclient/models"
 )
 
 // VerifyUserCodeRequestReader is a Reader for the VerifyUserCodeRequest structure.
