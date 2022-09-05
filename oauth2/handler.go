@@ -98,14 +98,6 @@ func (h *Handler) SetRoutes(admin *httprouterx.RouterAdmin, public *httprouterx.
 	public.GET(LogoutPath, h.performOidcFrontOrBackChannelLogout)
 	public.POST(LogoutPath, h.performOidcFrontOrBackChannelLogout)
 
-	public.GET(DefaultDevicePath, h.fallbackHandler("", "", http.StatusOK, config.KeyDeviceURL))
-	public.GET(DefaultPostDevicePath, h.fallbackHandler(
-		"You successfully authenticated on your device!",
-		"The Default Post Device URL is not set which is why you are seeing this fallback page. Your device login request however succeeded.",
-		http.StatusOK,
-		config.KeyDeviceDoneURL,
-	))
-
 	public.GET(DefaultLoginPath, h.fallbackHandler("", "", http.StatusOK, config.KeyLoginURL))
 	public.GET(DefaultConsentPath, h.fallbackHandler("", "", http.StatusOK, config.KeyConsentURL))
 	public.GET(DefaultLogoutPath, h.fallbackHandler("", "", http.StatusOK, config.KeyLogoutURL))
