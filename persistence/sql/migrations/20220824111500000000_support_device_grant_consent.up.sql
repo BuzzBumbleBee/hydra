@@ -13,4 +13,4 @@ CREATE TABLE hydra_oauth2_device_grant_request
 );
 CREATE INDEX hydra_oauth2_device_grant_request_client_id_idx ON hydra_oauth2_device_grant_request (client_id);
 CREATE INDEX hydra_oauth2_device_grant_request_verifier_idx ON hydra_oauth2_device_grant_request (verifier);
-CREATE INDEX hydra_oauth2_device_grant_request_challenge_idx ON hydra_oauth2_consent_request (challenge);
+CREATE INDEX hydra_oauth2_device_grant_request_challenge_idx ON hydra_oauth2_device_grant_request (challenge);

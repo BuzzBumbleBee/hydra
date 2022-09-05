@@ -78,11 +78,10 @@
             ]
           },
           "uniqueItems": true,
-          "default": [
-            "*"
-          ],
+          "default": [],
           "examples": [
             [
+              "*",
               "https://example.com",
               "https://*.example.com",
               "https://*.foo.example.com"
@@ -97,7 +96,11 @@
             "GET",
             "PUT",
             "PATCH",
-            "DELETE"
+            "DELETE",
+            "CONNECT",
+            "HEAD",
+            "OPTIONS",
+            "TRACE"
           ],
           "items": {
             "type": "string",
@@ -118,8 +121,12 @@
           "type": "array",
           "description": "A list of non simple headers the client is allowed to use with cross-domain requests.",
           "default": [
-            "Authorization",
-            "Content-Type"
+            "Accept",
+            "Content-Type",
+            "Content-Length",
+            "Accept-Language",
+            "Content-Language",
+            "Authorization"
           ],
           "items": {
             "type": "string"
@@ -129,6 +136,12 @@
           "type": "array",
           "description": "Sets which headers are safe to expose to the API of a CORS API specification.",
           "default": [
+            "Cache-Control",
+            "Expires",
+            "Last-Modified",
+            "Pragma",
+            "Content-Length",
+            "Content-Language",
             "Content-Type"
           ],
           "items": {
@@ -139,11 +152,6 @@
           "type": "boolean",
           "description": "Sets whether the request can include user credentials like cookies, HTTP authentication or client side SSL certificates.",
           "default": true
-        },
-        "options_passthrough": {
-          "type": "boolean",
-          "description": "TODO",
-          "default": false
         },
         "max_age": {
           "type": "integer",
@@ -169,9 +177,7 @@
           "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$"
         }
       ],
-      "examples": [
-        "127.0.0.1/32"
-      ]
+      "examples": ["127.0.0.1/32"]
     },
     "pem_file": {
       "type": "object",
@@ -181,15 +187,11 @@
             "path": {
               "type": "string",
               "description": "The path to the pem file.",
-              "examples": [
-                "/path/to/file.pem"
-              ]
+              "examples": ["/path/to/file.pem"]
             }
           },
           "additionalProperties": false,
-          "required": [
-            "path"
-          ]
+          "required": ["path"]
         },
         {
           "properties": {
@@ -198,29 +200,30 @@
               "description": "The base64 encoded string (without padding).",
               "contentEncoding": "base64",
               "contentMediaType": "application/x-pem-file",
-              "examples": [
-                "b3J5IGh5ZHJhIGlzIGF3ZXNvbWUK"
-              ]
+              "examples": ["b3J5IGh5ZHJhIGlzIGF3ZXNvbWUK"]
             }
           },
           "additionalProperties": false,
-          "required": [
-            "base64"
-          ]
+          "required": ["base64"]
         }
       ]
     },
     "duration": {
       "type": "string",
-      "pattern": "^[0-9]+(ns|us|ms|s|m|h)$",
+      "pattern": "^(\\d+(ns|us|ms|s|m|h))+$",
       "examples": [
-        "1h"
+        "1h",
+        "1h5m1s"
       ]
     },
     "tls_config": {
       "type": "object",
       "description": "Configures HTTPS (HTTP over TLS). If configured, the server automatically supports HTTP/2.",
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Setting enabled to false drops the TLS requirement for the admin endpoint, even if TLS is enabled on the public endpoint."
+        },
         "key": {
           "description": "Configures the private key (pem encoded).",
           "allOf": [
@@ -245,32 +248,6 @@
           }
         }
       }
-    },
-    "grantJwt": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Authorization Grants using JWT configuration",
-      "properties": {
-        "jti_optional": {
-          "type": "boolean",
-          "description": "If false, JTI claim must be present in JWT assertion.",
-          "default": false
-        },
-        "iat_optional": {
-          "type": "boolean",
-          "description": "If false, IAT claim must be present in JWT assertion.",
-          "default": false
-        },
-        "max_ttl": {
-          "description": "Configures what the maximum age of a JWT assertion can be. Uses JWT's EXP claim and JWT IAT claim to calculate assertion age. Assertion, that exceeds max age will be denied. Useful as a safety measure and recommended to not be set to 720h max.",
-          "default": "720h",
-          "allOf": [
-            {
-              "$ref": "#/definitions/duration"
-            }
-          ]
-        }
-      }
     }
   },
   "properties": {
@@ -282,15 +259,7 @@
         "level": {
           "type": "string",
           "description": "Sets the log level.",
-          "enum": [
-            "panic",
-            "fatal",
-            "error",
-            "warn",
-            "info",
-            "debug",
-            "trace"
-          ],
+          "enum": ["panic", "fatal", "error", "warn", "info", "debug", "trace"],
           "default": "info"
         },
         "leak_sensitive_values": {
@@ -306,11 +275,7 @@
         "format": {
           "type": "string",
           "description": "Sets the log format.",
-          "enum": [
-            "json",
-            "json_pretty",
-            "text"
-          ],
+          "enum": ["json", "json_pretty", "text"],
           "default": "text"
         }
       }
@@ -336,11 +301,9 @@
             },
             "host": {
               "type": "string",
-              "description": "The interface or unix socket Ory Hydra should listen and handle public API requests on. Use the prefix \"unix:\" to specify a path to a unix socket. Leave empty to listen on all interfaces.",
+              "description": "The interface or unix socket Ory Hydra should listen and handle public API requests on. Use the prefix `unix:` to specify a path to a unix socket. Leave empty to listen on all interfaces.",
               "default": "",
-              "examples": [
-                "localhost"
-              ]
+              "examples": ["localhost"]
             },
             "cors": {
               "$ref": "#/definitions/cors"
@@ -348,7 +311,7 @@
             "socket": {
               "$ref": "#/definitions/socket"
             },
-            "access_log": {
+            "request_log": {
               "type": "object",
               "additionalProperties": false,
               "description": "Access Log configuration for public server.",
@@ -380,11 +343,9 @@
             },
             "host": {
               "type": "string",
-              "description": "The interface or unix socket Ory Hydra should listen and handle administrative API requests on. Use the prefix \"unix:\" to specify a path to a unix socket. Leave empty to listen on all interfaces.",
+              "description": "The interface or unix socket Ory Hydra should listen and handle administrative API requests on. Use the prefix `unix:` to specify a path to a unix socket. Leave empty to listen on all interfaces.",
               "default": "",
-              "examples": [
-                "localhost"
-              ]
+              "examples": ["localhost"]
             },
             "cors": {
               "$ref": "#/definitions/cors"
@@ -392,7 +353,7 @@
             "socket": {
               "$ref": "#/definitions/socket"
             },
-            "access_log": {
+            "request_log": {
               "type": "object",
               "additionalProperties": false,
               "description": "Access Log configuration for admin server.",
@@ -408,16 +369,6 @@
               "allOf": [
                 {
                   "$ref": "#/definitions/tls_config"
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "enabled": {
-                      "type": "boolean",
-                      "description": "Setting enabled to false drops the TLS requirement for the admin endpoint, even if TLS is enabled on the public endpoint.",
-                      "default": true
-                    }
-                  }
                 }
               ]
             }
@@ -433,11 +384,7 @@
             "same_site_mode": {
               "type": "string",
               "description": "Specify the SameSite mode that cookies should be sent with.",
-              "enum": [
-                "Strict",
-                "Lax",
-                "None"
-              ],
+              "enum": ["Strict", "Lax", "None"],
               "default": "None"
             },
             "same_site_legacy_workaround": {
@@ -447,6 +394,44 @@
               "examples": [
                 true
               ]
+            },
+            "domain": {
+              "title": "HTTP Cookie Domain",
+              "description": "Sets the cookie domain for session and CSRF cookies. Useful when dealing with subdomains. Use with care!",
+              "type": "string"
+            },
+            "secure": {
+              "title": "HTTP Cookie Secure Flag in Development Mode",
+              "description": "Sets the HTTP Cookie secure flag in development mode. HTTP Cookies always have the secure flag in production mode.",
+              "type": "boolean",
+              "default": false
+            },
+            "names": {
+              "title": "Cookie Names",
+              "description": "Sets the session cookie name. Use with care!",
+              "type": "object",
+              "properties": {
+                "login_csrf": {
+                  "type": "string",
+                  "title": "CSRF Cookie Name",
+                  "default": "ory_hydra_login_csrf"
+                },
+                "consent_csrf": {
+                  "type": "string",
+                  "title": "CSRF Cookie Name",
+                  "default": "ory_hydra_consent_csrf"
+                },
+                "consent_device_verify": {
+                  "type": "string",
+                  "title": "CSRF Cookie Name",
+                  "default": "ory_hydra_device_verify_csrf"
+                },
+                "session": {
+                  "type": "string",
+                  "title": "Session Cookie Name",
+                  "default": "ory_hydra_session"
+                }
+              }
             }
           }
         }
@@ -454,7 +439,29 @@
     },
     "dsn": {
       "type": "string",
-      "description": "Sets the data source name. This configures the backend where Ory Hydra persists data. If dsn is \"memory\", data will be written to memory and is lost when you restart this instance. Ory Hydra supports popular SQL databases. For more detailed configuration information go to: https://www.ory.sh/docs/hydra/dependencies-environment#sql"
+      "description": "Sets the data source name. This configures the backend where Ory Hydra persists data. If dsn is `memory`, data will be written to memory and is lost when you restart this instance. Ory Hydra supports popular SQL databases. For more detailed configuration information go to: https://www.ory.sh/docs/hydra/dependencies-environment#sql"
+    },
+    "clients": {
+      "title": "Global outgoing network settings",
+      "description": "Configure how outgoing network calls behave.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "http": {
+          "title": "Global HTTP client configuration",
+          "description": "Configure how outgoing HTTP calls behave.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "disallow_private_ip_ranges": {
+              "title": "Disallow private IP ranges",
+              "description": "Disallow all outgoing HTTP calls to private IP ranges. This feature can help protect against SSRF attacks.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
     },
     "hsm": {
       "type": "object",
@@ -503,12 +510,8 @@
               "items": {
                 "type": "string"
               },
-              "default": [
-                "hydra.openid.id-token"
-              ],
-              "examples": [
-                "hydra.jwt.access-token"
-              ]
+              "default": ["hydra.openid.id-token"],
+              "examples": ["hydra.jwt.access-token"]
             }
           }
         },
@@ -520,7 +523,7 @@
             "jwks_url": {
               "type": "string",
               "description": "Overwrites the JWKS URL",
-              "format": "uri",
+              "format": "uri-reference",
               "examples": [
                 "https://my-service.com/.well-known/jwks.json"
               ]
@@ -528,7 +531,7 @@
             "token_url": {
               "type": "string",
               "description": "Overwrites the OAuth2 Token URL",
-              "format": "uri",
+              "format": "uri-reference",
               "examples": [
                 "https://my-service.com/oauth2/token"
               ]
@@ -536,7 +539,7 @@
             "auth_url": {
               "type": "string",
               "description": "Overwrites the OAuth2 Auth URL",
-              "format": "uri",
+              "format": "uri-reference",
               "examples": [
                 "https://my-service.com/oauth2/auth"
               ]
@@ -544,31 +547,18 @@
             "client_registration_url": {
               "description": "Sets the OpenID Connect Dynamic Client Registration Endpoint",
               "type": "string",
-              "format": "uri",
+              "format": "uri-reference",
               "examples": [
                 "https://my-service.com/clients"
               ]
             },
-            "device_authorization_url": {
-              "description": "Sets the OpenID Connect Dynamic Client Registration Endpoint",
-              "type": "string",
-              "format": "uri",
-              "examples": [
-                "https://my-service.com/device_authorization"
-              ]
-            },
             "supported_claims": {
               "type": "array",
-              "description": "A list of supported claims to be broadcasted. Claim \"sub\" is always included.",
+              "description": "A list of supported claims to be broadcasted. Claim `sub` is always included.",
               "items": {
                 "type": "string"
               },
-              "examples": [
-                [
-                  "email",
-                  "username"
-                ]
-              ]
+              "examples": [["email", "username"]]
             },
             "supported_scope": {
               "type": "array",
@@ -576,18 +566,12 @@
               "items": {
                 "type": "string"
               },
-              "examples": [
-                [
-                  "email",
-                  "whatever",
-                  "read.photos"
-                ]
-              ]
+              "examples": [["email", "whatever", "read.photos"]]
             },
             "userinfo_url": {
               "type": "string",
               "description": "A URL of the userinfo endpoint to be advertised at the OpenID Connect Discovery endpoint /.well-known/openid-configuration. Defaults to Ory Hydra's userinfo endpoint at /userinfo. Set this value if you want to handle this endpoint yourself.",
-              "format": "uri",
+              "format": "uri-reference",
               "examples": [
                 "https://example.org/my-custom-userinfo-endpoint"
               ]
@@ -609,12 +593,10 @@
             "supported_types": {
               "type": "array",
               "description": "A list of algorithms to enable.",
+              "default": ["public"],
               "items": {
                 "type": "string",
-                "enum": [
-                  "public",
-                  "pairwise"
-                ]
+                "enum": ["public", "pairwise"]
               }
             },
             "pairwise": {
@@ -626,31 +608,35 @@
                   "type": "string"
                 }
               },
-              "required": [
-                "salt"
-              ]
+              "required": ["salt"]
             }
           },
-          "if": {
-            "properties": {
-              "supported_types": {
-                "contains": {
-                  "const": "pairwise"
+          "anyOf": [
+            {
+              "if": {
+                "properties": {
+                  "supported_types": {
+                    "contains": {
+                      "const": "pairwise"
+                    }
+                  }
                 }
+              },
+              "then": {
+                "required": [
+                  "pairwise"
+                ]
+              }
+            },
+            {
+              "not": {
+                "required": ["supported_types"]
               }
             }
-          },
-          "then": {
-            "required": [
-              "pairwise"
-            ]
-          },
+          ],
           "examples": [
             {
-              "supported_types": [
-                "public",
-                "pairwise"
-              ],
+              "supported_types": ["public", "pairwise"],
               "pairwise": {
                 "salt": "some-random-salt"
               }
@@ -669,17 +655,11 @@
             },
             "default_scope": {
               "type": "array",
-              "description": "The OpenID Connect Dynamic Client Registration specification has no concept of whitelisting OAuth 2.0 Scope. If you want to expose Dynamic Client Registration, you should set the default scope enabled for newly registered clients. Keep in mind that users can overwrite this default by setting the \"scope\" key in the registration payload, effectively disabling the concept of whitelisted scopes.",
+              "description": "The OpenID Connect Dynamic Client Registration specification has no concept of whitelisting OAuth 2.0 Scope. If you want to expose Dynamic Client Registration, you should set the default scope enabled for newly registered clients. Keep in mind that users can overwrite this default by setting the `scope` key in the registration payload, effectively disabling the concept of whitelisted scopes.",
               "items": {
                 "type": "string"
               },
-              "examples": [
-                [
-                  "openid",
-                  "offline",
-                  "offline_access"
-                ]
-              ]
+              "examples": [["openid", "offline", "offline_access"]]
             }
           }
         }
@@ -695,11 +675,9 @@
           "properties": {
             "issuer": {
               "type": "string",
-              "description": "This value will be used as the \"issuer\" in access and ID tokens. It must be specified and using HTTPS protocol, unless --dangerous-force-http is set. This should typically be equal to the public value.",
+              "description": "This value will be used as the `issuer` in access and ID tokens. It must be specified and using HTTPS protocol, unless --dev is set. This should typically be equal to the public value.",
               "format": "uri",
-              "examples": [
-                "https://localhost:4444/"
-              ]
+              "examples": ["https://localhost:4444/"]
             },
             "public": {
               "type": "string",
@@ -709,70 +687,68 @@
                 "https://localhost:4444/"
               ]
             },
-            "device": {
+            "admin": {
               "type": "string",
-              "description": "Sets the internal device endpoint.",
+              "description": "This is the base location of the admin endpoints of your Ory Hydra installation.",
               "format": "uri",
               "examples": [
-                "https://localhost:4444/device"
+                "https://localhost:4445/"
               ]
             }
           }
         },
         "login": {
           "type": "string",
-          "description": "Sets the login endpoint of the User Login & Consent flow. Defaults to an internal fallback URL showing an error.",
-          "format": "uri",
+          "description": "Sets the OAuth2 Login Endpoint URL of the OAuth2 User Login & Consent flow. Defaults to an internal fallback URL showing an error.",
+          "format": "uri-reference",
           "examples": [
-            "https://my-login.app/login"
+            "https://my-login.app/login",
+            "/ui/login"
           ]
         },
         "consent": {
           "type": "string",
           "description": "Sets the consent endpoint of the User Login & Consent flow. Defaults to an internal fallback URL showing an error.",
-          "format": "uri",
+          "format": "uri-reference",
           "examples": [
-            "https://my-consent.app/consent"
+            "https://my-consent.app/consent",
+            "/ui/consent"
           ]
         },
         "logout": {
           "type": "string",
           "description": "Sets the logout endpoint. Defaults to an internal fallback URL showing an error.",
-          "format": "uri",
+          "format": "uri-reference",
           "examples": [
-            "https://my-logout.app/logout"
+            "https://my-logout.app/logout",
+            "/ui/logout"
           ]
         },
         "device": {
           "type": "string",
-          "description": "Sets the device endpoint. Defaults to an internal fallback URL showing an error.",
-          "format": "uri",
+          "description": "Sets the device auth endpoint. Defaults to an internal fallback URL showing an error.",
+          "format": "uri-reference",
           "examples": [
-            "https://my-logout.app/device"
+            "https://my-logout.app/device",
+            "/ui/device"
           ]
         },
         "error": {
           "type": "string",
           "description": "Sets the error endpoint. The error ui will be shown when an OAuth2 error occurs that which can not be sent back to the client. Defaults to an internal fallback URL showing an error.",
-          "format": "uri",
+          "format": "uri-reference",
           "examples": [
-            "https://my-error.app/error"
+            "https://my-error.app/error",
+            "/ui/error"
           ]
         },
         "post_logout_redirect": {
           "type": "string",
           "description": "When a user agent requests to logout, it will be redirected to this url afterwards per default.",
-          "format": "uri",
+          "format": "uri-reference",
           "examples": [
-            "https://my-example.app/logout-successful"
-          ]
-        },
-        "post_device_done": {
-          "type": "string",
-          "description": "When a device grant requests is complete, it will be redirected to this url afterwards per default.",
-          "format": "uri",
-          "examples": [
-            "https://my-logout.app/device"
+            "https://my-example.app/logout-successful",
+            "/ui"
           ]
         }
       }
@@ -786,18 +762,14 @@
           "description": "Defines how scopes are matched. For more details have a look at https://github.com/ory/fosite#scopes",
           "enum": [
             "exact",
-            "wildcard",
-            "DEPRECATED_HIERARCHICAL_SCOPE_STRATEGY"
+            "wildcard"
           ],
           "default": "wildcard"
         },
         "access_token": {
           "type": "string",
           "description": "Defines access token type. jwt is a bad idea, see https://www.ory.sh/docs/hydra/advanced#json-web-tokens",
-          "enum": [
-            "opaque",
-            "jwt"
-          ],
+          "enum": ["opaque", "jwt"],
           "default": "opaque"
         }
       }
@@ -857,15 +829,6 @@
               "$ref": "#/definitions/duration"
             }
           ]
-        },
-        "device_user_code": {
-          "description": "Configures how long device/user codes are valid.",
-          "default": "5m",
-          "allOf": [
-            {
-              "$ref": "#/definitions/duration"
-            }
-          ]
         }
       }
     },
@@ -873,28 +836,11 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "device_authorization": {
-          "type": "object",
-          "properties": {
-            "token_polling_interval": {
-              "title": "Device Authorisation Token Polling Interval",
-              "description": "The minimum amount of time in seconds that the client SHOULD wait between polling requests to the token endpoint.",
-              "default": "10s",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/duration"
-                }
-              ]
-            }
-          }
-        },
         "expose_internal_errors": {
           "type": "boolean",
           "description": "Set this to true if you want to share error debugging information with your OAuth 2.0 clients. Keep in mind that debug information is very valuable when dealing with errors, but might also expose database error codes and similar errors.",
           "default": false,
-          "examples": [
-            true
-          ]
+          "examples": [true]
         },
         "session": {
           "type": "object",
@@ -907,21 +853,11 @@
             }
           }
         },
-        "include_legacy_error_fields": {
-          "type": "boolean",
-          "description": "Set this to true if you want to include the `error_hint` and `error_debug` legacy fields in error responses. We recommend to set this to `false` unless you have clients using these fields.",
-          "default": false,
-          "examples": [
-            true
-          ]
-        },
         "exclude_not_before_claim": {
           "type": "boolean",
           "description": "Set to true if you want to exclude claim `nbf (not before)` part of access token.",
           "default": false,
-          "examples": [
-            true
-          ]
+          "examples": [true]
         },
         "allowed_top_level_claims": {
           "type": "array",
@@ -929,23 +865,27 @@
           "items": {
             "type": "string"
           },
-          "examples": [
-            [
-              "username",
-              "email",
-              "user_uuid"
-            ]
-          ]
+          "examples": [["username", "email", "user_uuid"]]
         },
         "hashers": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Configures hashing algorithms. Supports only BCrypt at the moment.",
+          "description": "Configures hashing algorithms. Supports only BCrypt and PBKDF2 at the moment.",
           "properties": {
+            "algorithm": {
+              "title": "Password hashing algorithm",
+              "description": "One of the values: pbkdf2, bcrypt.\n\nWarning! This value can not be changed once set as all existing OAuth 2.0 Clients will not be able to sign in any more.",
+              "type": "string",
+              "default": "pbkdf2",
+              "enum": [
+                "pbkdf2",
+                "bcrypt"
+              ]
+            },
             "bcrypt": {
               "type": "object",
               "additionalProperties": false,
-              "description": "Configures the BCrypt hashing algorithm used for hashing Client Secrets.",
+              "description": "Configures the BCrypt hashing algorithm used for hashing OAuth 2.0 Client Secrets.",
               "properties": {
                 "cost": {
                   "type": "integer",
@@ -953,6 +893,19 @@
                   "default": 10,
                   "minimum": 4,
                   "maximum": 31
+                }
+              }
+            },
+            "pbkdf2": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Configures the PBKDF2 hashing algorithm used for hashing OAuth 2.0 Client Secrets.",
+              "properties": {
+                "iterations": {
+                  "type": "integer",
+                  "description": "Sets the PBKDF2 iterations. The higher the value, the more CPU time is being used to generate hashes.",
+                  "default": 25000,
+                  "minimum": 1
                 }
               }
             }
@@ -965,16 +918,12 @@
             "enforced": {
               "type": "boolean",
               "description": "Sets whether PKCE should be enforced for all clients.",
-              "examples": [
-                true
-              ]
+              "examples": [true]
             },
             "enforced_for_public_clients": {
               "type": "boolean",
               "description": "Sets whether PKCE should be enforced for public clients.",
-              "examples": [
-                true
-              ]
+              "examples": [true]
             }
           }
         },
@@ -984,7 +933,7 @@
           "properties": {
             "default_grant_allowed_scope": {
               "type": "boolean",
-              "description": "Defines how scopes are added if the request doesn't contains any scope",
+              "description": "Automatically grant authorized OAuth2 Scope in OAuth2 Client Credentials Flow. Each OAuth2 Client is allowed to request a predefined OAuth2 Scope (for example `read write`). If this option is enabled, the full\nscope is automatically granted when performing the OAuth2 Client Credentials flow.\n\nIf disabled, the OAuth2 Client has to request the scope in the OAuth2 request by providing the `scope` query parameter. Setting this option to true is common if you need compatibility with MITREid.",
               "examples": [
                 false
               ]
@@ -996,7 +945,30 @@
           "additionalProperties": false,
           "properties": {
             "jwt": {
-              "$ref": "#/definitions/grantJwt"
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Authorization Grants using JWT configuration",
+              "properties": {
+                "jti_optional": {
+                  "type": "boolean",
+                  "description": "Configures if the JSON Web Token ID (`jti`) claim is required in the JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants (RFC7523). If set to `false`, the `jti` claim is required. Set this value to `true` only after careful consideration.",
+                  "default": false
+                },
+                "iat_optional": {
+                  "type": "boolean",
+                  "description": "Configures if the issued at (`iat`) claim is required in the JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants (RFC7523). If set to `false`, the `iat` claim is required. Set this value to `true` only after careful consideration.",
+                  "default": false
+                },
+                "max_ttl": {
+                  "description": "Configures what the maximum age of a JWT assertion used in the JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants (RFC7523) can be. This feature uses the `exp` claim and `iat` claim to calculate assertion age. Assertions exceeding the max age will be denied. Useful as a safety measure and recommended to keep below 720h. This governs the `grant.jwt.max_ttl` setting.",
+                  "default": "720h",
+                  "allOf": [
+                    {
+                      "$ref": "#/definitions/duration"
+                    }
+                  ]
+                }
+              }
             }
           }
         },
@@ -1004,9 +976,7 @@
           "type": "string",
           "description": "Sets the refresh token hook endpoint. If set it will be called during token refresh to receive updated token claims.",
           "format": "uri",
-          "examples": [
-            "https://my-example.app/token-refresh-hook"
-          ]
+          "examples": ["https://my-example.app/token-refresh-hook"]
         }
       }
     },
@@ -1050,13 +1020,8 @@
     "profiling": {
       "type": "string",
       "description": "Enables profiling if set. For more details on profiling, head over to: https://blog.golang.org/profiling-go-programs",
-      "enum": [
-        "cpu",
-        "mem"
-      ],
-      "examples": [
-        "cpu"
-      ]
+      "enum": ["cpu", "mem"],
+      "examples": ["cpu"]
     },
     "tracing": {
       "type": "object",
@@ -1074,16 +1039,12 @@
             "instana",
             "otel"
           ],
-          "examples": [
-            "jaeger"
-          ]
+          "examples": ["jaeger"]
         },
         "service_name": {
           "type": "string",
           "description": "Specifies the service name to use on the tracer.",
-          "examples": [
-            "Ory Hydra"
-          ]
+          "examples": ["Ory Hydra"]
         },
         "providers": {
           "type": "object",
@@ -1108,16 +1069,12 @@
                       "format": "uri"
                     }
                   ],
-                  "examples": [
-                    "127.0.0.1:6831"
-                  ]
+                  "examples": ["127.0.0.1:6831"]
                 },
                 "propagation": {
                   "type": "string",
                   "description": "The tracing header format",
-                  "examples": [
-                    "jaeger"
-                  ]
+                  "examples": ["jaeger"]
                 },
                 "max_tag_value_length": {
                   "type": "integer",
@@ -1127,11 +1084,7 @@
                 "sampling": {
                   "type": "object",
                   "propertyNames": {
-                    "enum": [
-                      "type",
-                      "value",
-                      "server_url"
-                    ]
+                    "enum": ["type", "value", "server_url"]
                   },
                   "allOf": [
                     {
@@ -1229,9 +1182,7 @@
           "type": "boolean",
           "description": "Disables anonymized telemetry reports - for more information please visit https://www.ory.sh/docs/ecosystem/sqa",
           "default": false,
-          "examples": [
-            true
-          ]
+          "examples": [true]
         }
       },
       "examples": [
@@ -1260,26 +1211,18 @@
               "type": "boolean",
               "description": "Set GOMAXPROCS automatically according to cgroups limits",
               "default": false,
-              "examples": [
-                true
-              ]
+              "examples": [true]
             }
           }
         }
       }
     },
-    "dangerous-force-http": {
+    "dev": {
       "type": "boolean",
-      "title": "Disables HTTP/2 over TLS (HTTPS) and serves HTTP instead",
-      "description": "DO NOT USE THIS IN PRODUCTION - Disables HTTP/2 over TLS (HTTPS) and serves HTTP instead. This is only available as CLI flag `--dangerous-force-http`."
-    },
-    "dangerous-allow-insecure-redirect-urls": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "title": "Disable HTTPS enforcement for the provided redirect URLs.",
-      "description": "DO NOT USE THIS IN PRODUCTION - Disable HTTPS enforcement for the provided redirect URLs. This is only available as CLI flag `--dangerous-allow-insecure-redirect-urls`."
+      "title": "Enable development mode",
+      "description": "If true, disables critical security measures to allow easier local development. Do not use in production.",
+      "default": false
     }
-  }
+  },
+  "additionalProperties": false
 }

@@ -22,10 +22,9 @@ serve:
       exposed_headers:
         - Content-Type
       allow_credentials: true
-      options_passthrough: true
       max_age: 1
       debug: false
-    access_log:
+    request_log:
       disable_for_health: false
   admin:
     port: 2
@@ -46,10 +45,9 @@ serve:
       exposed_headers:
         - Content-Type
       allow_credentials: true
-      options_passthrough: true
       max_age: 1
       debug: false
-    access_log:
+    request_log:
       disable_for_health: false
   tls:
     key:
@@ -96,9 +94,10 @@ oidc:
 
 urls:
   self:
+    issuer: https://issuer
     public: https://public
     device: https://public/device
-    issuer: https://issuer
+    admin: https://admin
   login: https://login
   consent: https://consent
   logout: https://logout
@@ -121,7 +120,6 @@ ttl:
 
 oauth2:
   expose_internal_errors: true
-  include_legacy_error_fields: true
   device_authorization:
     token_polling_interval: 2h
   hashers:
