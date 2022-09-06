@@ -141,7 +141,7 @@ func (h *Handler) DeviceAuthGetHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	session, err := h.r.ConsentStrategy().HandleOAuth2DeviceAuthorizationRequest(ctx, w, r, request)
+	_, err = h.r.ConsentStrategy().HandleOAuth2DeviceAuthorizationRequest(ctx, w, r, request)
 	if errors.Is(err, consent.ErrAbortOAuth2Request) {
 		x.LogAudit(r, nil, h.r.AuditLogger())
 		// do nothing
@@ -150,14 +150,6 @@ func (h *Handler) DeviceAuthGetHandler(w http.ResponseWriter, r *http.Request, _
 		x.LogError(r, err, h.r.Logger())
 		h.r.Writer().WriteError(w, r, err)
 		return
-	}
-
-	for _, scope := range session.GrantedScope {
-		request.GrantScope(scope)
-	}
-
-	for _, audience := range session.GrantedAudience {
-		request.GrantAudience(audience)
 	}
 
 	// Device flow is done, let's redirect the user back to the

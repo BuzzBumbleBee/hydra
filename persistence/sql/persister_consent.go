@@ -218,6 +218,23 @@ func (p *Persister) CreateDeviceGrantRequest(ctx context.Context, req *consent.D
 	return errorsx.WithStack(p.Connection(ctx).Create(req))
 }
 
+func (p *Persister) GetDeviceGrantRequestByVerifier(ctx context.Context, verifier string) (*consent.DeviceGrantRequest, error) {
+	ctx, span := p.r.Tracer(ctx).Tracer().Start(ctx, "persistence.sql.GetDeviceGrantRequestByVerifier")
+	defer span.End()
+
+	var dgr consent.DeviceGrantRequest
+	return &dgr, p.transaction(ctx, func(ctx context.Context, c *pop.Connection) error {
+		if err := c.Where("verifier = ?", verifier).First(&dgr); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errorsx.WithStack(x.ErrNotFound)
+			}
+			return sqlcon.HandleError(err)
+		}
+
+		return nil
+	})
+}
+
 func (p *Persister) AcceptDeviceGrantRequest(ctx context.Context, challenge string, device_code_signature string, client_id string, requested_scopes fosite.Arguments, requested_aud fosite.Arguments) (*consent.DeviceGrantRequest, error) {
 	var dgr consent.DeviceGrantRequest
 	return &dgr, p.transaction(ctx, func(ctx context.Context, c *pop.Connection) error {

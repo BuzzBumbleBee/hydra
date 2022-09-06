@@ -32,6 +32,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/ory/fosite"
 	"github.com/ory/x/pointerx"
 
 	"github.com/ory/hydra/consent"

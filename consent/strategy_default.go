@@ -1031,18 +1031,19 @@ func (s *DefaultStrategy) forwardDeviceRequest(ctx context.Context, w http.Respo
 		return errorsx.WithStack(err)
 	}
 
-	http.Redirect(w, r, urlx.SetQuery(s.c.DeviceUrl(ctx), url.Values{"device_challenge": {challenge}}).String(), http.StatusFound)
+	query := url.Values{"device_challenge": {challenge}}
+	if r.URL.Query().Has("user_code") {
+		query.Add("user_code", r.URL.Query().Get("user_code"))
+	}
+
+	http.Redirect(w, r, urlx.SetQuery(s.c.DeviceUrl(ctx), query).String(), http.StatusFound)
 
 	// generate the verifier
 	return errorsx.WithStack(ErrAbortOAuth2Request)
 }
 
-func (s *DefaultStrategy) verifyDeviceAndUnlock(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.Requester, verifier string) (*DeviceGrantRequest, error) {
-	if !req.GetClient().GetGrantTypes().Has("urn:ietf:params:oauth:grant-type:device_code") {
-		return nil, errorsx.WithStack(fosite.ErrAccessDenied.WithHint("This client cannot use device_code grant type"))
-	}
-
-	session, err := s.r.ConsentManager().VerifyAndInvalidateDeviceGrantRequest(ctx, verifier)
+func (s *DefaultStrategy) verifyDevice(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.DeviceAuthorizeRequester, verifier string) (*DeviceGrantRequest, error) {
+	session, err := s.r.ConsentManager().GetDeviceGrantRequestByVerifier(ctx, verifier)
 	if errors.Is(err, sqlcon.ErrNoRows) {
 		return nil, errorsx.WithStack(fosite.ErrAccessDenied.WithHint("The device verifier has already been used, has not been granted, or is invalid."))
 	} else if err != nil {
@@ -1053,12 +1054,25 @@ func (s *DefaultStrategy) verifyDeviceAndUnlock(ctx context.Context, w http.Resp
 		return nil, errorsx.WithStack(fosite.ErrInvalidGrant.WithHint("The OAuth 2.0 Client ID from this request does not match the one from the authorize request."))
 	}
 
-	err = s.r.OAuth2Storage().CreateDeviceCodeSession(ctx, session.DeviceCodeSignature.String, req)
+	req.SetRequestedScopes(fosite.Arguments(session.RequestedScope))
+	req.SetRequestedAudience(fosite.Arguments(session.RequestedAudience))
+
+	_, err = session.DeviceCodeSignature.Value()
 	if err != nil {
-		return nil, errorsx.WithStack(err)
+		return nil, err
 	}
+	req.SetDeviceCodeSignature(session.DeviceCodeSignature.String)
 
 	return session, nil
+}
+
+func (s *DefaultStrategy) unlockDeviceCode(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.DeviceAuthorizeRequester, deviceSession *DeviceGrantRequest) error {
+	err := s.r.OAuth2Storage().CreateDeviceCodeSession(ctx, req.GetDeviceCodeSignature(), req)
+	if err != nil {
+		return errorsx.WithStack(err)
+	}
+
+	return nil
 }
 
 func (s *DefaultStrategy) HandleOAuth2AuthorizationRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.AuthorizeRequester) (*AcceptOAuth2ConsentRequest, error) {
@@ -1103,7 +1117,7 @@ func (s *DefaultStrategy) ObfuscateSubjectIdentifier(ctx context.Context, cl fos
 	return subject, nil
 }
 
-func (s *DefaultStrategy) HandleOAuth2DeviceAuthorizationRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.DeviceAuthorizeRequester) (*AcceptOAuth2ConsentRequest, error) {
+func (s *DefaultStrategy) HandleOAuth2DeviceAuthorizationRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.DeviceAuthorizeRequester) (*DeviceGrantRequest, error) {
 	authenticationVerifier := strings.TrimSpace(req.GetRequestForm().Get("login_verifier"))
 	consentVerifier := strings.TrimSpace(req.GetRequestForm().Get("consent_verifier"))
 	deviceVerifier := strings.TrimSpace(req.GetRequestForm().Get("device_verifier"))
@@ -1116,8 +1130,18 @@ func (s *DefaultStrategy) HandleOAuth2DeviceAuthorizationRequest(ctx context.Con
 		// ok, we need to process this request and redirect to device auth endpoint
 		return nil, s.requestDevice(ctx, w, r, req)
 	} else if authenticationVerifier == "" && consentVerifier == "" {
+		_, err := s.verifyDevice(ctx, w, r, req, deviceVerifier)
+		if err != nil {
+			return nil, err
+		}
+
 		return nil, s.requestAuthentication(ctx, w, r, req)
 	} else if consentVerifier == "" {
+		_, err := s.verifyDevice(ctx, w, r, req, deviceVerifier)
+		if err != nil {
+			return nil, err
+		}
+
 		authSession, err := s.verifyAuthentication(w, r, req, authenticationVerifier)
 		if err != nil {
 			return nil, err
@@ -1127,16 +1151,28 @@ func (s *DefaultStrategy) HandleOAuth2DeviceAuthorizationRequest(ctx context.Con
 		return nil, s.requestConsent(ctx, w, r, req, authSession)
 	}
 
-	_, err := s.verifyDeviceAndUnlock(ctx, w, r, req, deviceVerifier)
-	if err != nil {
-		return nil, err
-	}
-
-	// Else
 	consentSession, err := s.verifyConsent(ctx, w, r, req, consentVerifier)
 	if err != nil {
 		return nil, err
 	}
 
-	return consentSession, nil
+	for _, scope := range consentSession.GrantedScope {
+		req.GrantScope(scope)
+	}
+
+	for _, audience := range consentSession.GrantedAudience {
+		req.GrantAudience(audience)
+	}
+
+	deviceSession, err := s.verifyDevice(ctx, w, r, req, deviceVerifier)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.unlockDeviceCode(ctx, w, r, req, deviceSession)
+	if err != nil {
+		return nil, err
+	}
+
+	return deviceSession, nil
 }
