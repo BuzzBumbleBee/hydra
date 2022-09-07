@@ -135,21 +135,98 @@ func (h *Handler) SetRoutes(admin *httprouterx.RouterAdmin, public *httprouterx.
 
 func (h *Handler) DeviceAuthGetHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var ctx = r.Context()
-	request, err := h.r.OAuth2Provider().NewDeviceAuthorizeGetRequest(ctx, r)
+
+	authorizeRequest, err := h.r.OAuth2Provider().NewDeviceAuthorizeGetRequest(ctx, r)
 	if err != nil {
-		h.r.Writer().WriteError(w, r, err)
+		x.LogError(r, err, h.r.Logger())
 		return
 	}
 
-	_, err = h.r.ConsentStrategy().HandleOAuth2DeviceAuthorizationRequest(ctx, w, r, request)
+	session, err := h.r.ConsentStrategy().HandleOAuth2DeviceAuthorizationRequest(ctx, w, r, authorizeRequest)
 	if errors.Is(err, consent.ErrAbortOAuth2Request) {
 		x.LogAudit(r, nil, h.r.AuditLogger())
 		// do nothing
 		return
+	} else if e := &(fosite.RFC6749Error{}); errors.As(err, &e) {
+		x.LogAudit(r, err, h.r.AuditLogger())
+		return
 	} else if err != nil {
 		x.LogError(r, err, h.r.Logger())
-		h.r.Writer().WriteError(w, r, err)
 		return
+	}
+
+	for _, scope := range session.GrantedScope {
+		authorizeRequest.GrantScope(scope)
+	}
+
+	for _, audience := range session.GrantedAudience {
+		authorizeRequest.GrantAudience(audience)
+	}
+
+	openIDKeyID, err := h.r.OpenIDJWTStrategy().GetPublicKeyID(ctx)
+	if err != nil {
+		x.LogError(r, err, h.r.Logger())
+		return
+	}
+
+	var accessTokenKeyID string
+	if h.c.AccessTokenStrategy(r.Context()) == "jwt" {
+		accessTokenKeyID, err = h.r.AccessTokenJWTStrategy().GetPublicKeyID(ctx)
+		if err != nil {
+			x.LogError(r, err, h.r.Logger())
+			return
+		}
+	}
+
+	obfuscatedSubject, err := h.r.ConsentStrategy().ObfuscateSubjectIdentifier(ctx, authorizeRequest.GetClient(), session.ConsentRequest.Subject, session.ConsentRequest.ForceSubjectIdentifier)
+	if e := &(fosite.RFC6749Error{}); errors.As(err, &e) {
+		x.LogAudit(r, err, h.r.AuditLogger())
+		return
+	} else if err != nil {
+		x.LogError(r, err, h.r.Logger())
+		return
+	}
+
+	authorizeRequest.SetID(session.ID)
+	claims := &jwt.IDTokenClaims{
+		Subject:                             obfuscatedSubject,
+		Issuer:                              h.c.IssuerURL(ctx).String(),
+		AuthTime:                            time.Time(session.AuthenticatedAt),
+		RequestedAt:                         session.RequestedAt,
+		Extra:                               session.Session.IDToken,
+		AuthenticationContextClassReference: session.ConsentRequest.ACR,
+		AuthenticationMethodsReferences:     session.ConsentRequest.AMR,
+
+		// These are required for work around https://github.com/ory/fosite/issues/530
+		Nonce:    authorizeRequest.GetRequestForm().Get("nonce"),
+		Audience: []string{authorizeRequest.GetClient().GetID()},
+		IssuedAt: time.Now().Truncate(time.Second).UTC(),
+
+		// This is set by the fosite strategy
+		// ExpiresAt:   time.Now().Add(h.IDTokenLifespan).UTC(),
+	}
+	claims.Add("sid", session.ConsentRequest.LoginSessionID)
+
+	authorizeRequest.SetSession(&Session{
+		DefaultSession: &openid.DefaultSession{
+			Claims: claims,
+			Headers: &jwt.Headers{Extra: map[string]interface{}{
+				// required for lookup on jwk endpoint
+				"kid": openIDKeyID,
+			}},
+			Subject: session.ConsentRequest.Subject,
+		},
+		Extra:                 session.Session.AccessToken,
+		KID:                   accessTokenKeyID,
+		ClientID:              authorizeRequest.GetClient().GetID(),
+		ConsentChallenge:      session.ID,
+		ExcludeNotBeforeClaim: h.c.ExcludeNotBeforeClaim(ctx),
+		AllowedTopLevelClaims: h.c.AllowedTopLevelClaims(ctx),
+	})
+
+	err = h.r.OAuth2Storage().CreateDeviceCodeSession(ctx, authorizeRequest.GetDeviceCodeSignature(), authorizeRequest)
+	if err != nil {
+		h.r.Writer().WriteError(w, r, err)
 	}
 
 	// Device flow is done, let's redirect the user back to the

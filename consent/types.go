@@ -492,13 +492,13 @@ type DeviceGrantRequest struct {
 	// Client is the OAuth 2.0 Client that initiated the request.
 	//
 	// required: true
-	Client   *client.Client `json:"client" db:"-"`
-	ClientID sql.NullString `json:"-" db:"client_id"`
+	Client   *client.Client   `json:"client" db:"-"`
+	ClientID sqlxx.NullString `json:"-" db:"client_id"`
 
 	// DeviceCodeSignature is the OAuth 2.0 Device Authorization Grant Device Code Signature (HMAC)
 	//
 	// required: true
-	DeviceCodeSignature sql.NullString `json:"-" db:"device_code_signature"`
+	DeviceCodeSignature sqlxx.NullString `json:"-" db:"device_code_signature"`
 
 	CSRF     string `json:"-" db:"csrf"`
 	Verifier string `json:"-" db:"verifier"`
@@ -513,16 +513,13 @@ func (_ DeviceGrantRequest) TableName() string {
 
 func (r *DeviceGrantRequest) BeforeSave(_ *pop.Connection) error {
 	if r.Client != nil {
-		r.ClientID = sql.NullString{
-			Valid:  true,
-			String: r.Client.GetID(),
-		}
+		r.ClientID = sqlxx.NullString(r.Client.GetID())
 	}
 	return nil
 }
 
 func (r *DeviceGrantRequest) AfterFind(c *pop.Connection) error {
-	if r.ClientID.Valid {
+	if r.ClientID != "" {
 		r.Client = &client.Client{}
 		return sqlcon.HandleError(c.Where("id = ?", r.ClientID).First(r.Client))
 	}

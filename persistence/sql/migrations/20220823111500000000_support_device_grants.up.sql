@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS hydra_oauth2_device_code
     active             BOOL         NOT NULL DEFAULT true,
     requested_audience TEXT         NULL     ,
     granted_audience   TEXT         NULL     ,
-    challenge_id       VARCHAR(40)  NULL REFERENCES hydra_oauth2_flow (login_challenge) ON DELETE CASCADE,
+    challenge_id       VARCHAR(40)  NULL REFERENCES hydra_oauth2_flow (consent_challenge_id) ON DELETE CASCADE,
     nid                VARCHAR(36)
 );
 CREATE INDEX hydra_oauth2_device_code_requested_at_idx ON hydra_oauth2_device_code (requested_at);

@@ -244,14 +244,8 @@ func (p *Persister) AcceptDeviceGrantRequest(ctx context.Context, challenge stri
 
 		dgr.Accepted = true
 		dgr.AcceptedAt = sqlxx.NullTime(time.Now())
-		dgr.DeviceCodeSignature = sql.NullString{
-			Valid:  true,
-			String: device_code_signature,
-		}
-		dgr.ClientID = sql.NullString{
-			Valid:  true,
-			String: client_id,
-		}
+		dgr.DeviceCodeSignature = sqlxx.NullString(device_code_signature)
+		dgr.ClientID = sqlxx.NullString(client_id)
 		dgr.RequestedScope = sqlxx.StringSlicePipeDelimiter(requested_scopes)
 		dgr.RequestedAudience = sqlxx.StringSlicePipeDelimiter(requested_aud)
 		return c.Update(&dgr)
