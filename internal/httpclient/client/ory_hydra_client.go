@@ -12,6 +12,7 @@ import (
 
 	"github.com/ory/hydra/internal/httpclient/client/admin"
 	"github.com/ory/hydra/internal/httpclient/client/public"
+	"github.com/ory/hydra/internal/httpclient/client/v0alpha2"
 )
 
 // Default ory hydra HTTP client.
@@ -58,6 +59,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *OryHydra {
 	cli.Transport = transport
 	cli.Admin = admin.New(transport, formats)
 	cli.Public = public.New(transport, formats)
+	cli.V0alpha2 = v0alpha2.New(transport, formats)
 	return cli
 }
 
@@ -106,6 +108,8 @@ type OryHydra struct {
 
 	Public public.ClientService
 
+	V0alpha2 v0alpha2.ClientService
+
 	Transport runtime.ClientTransport
 }
 
@@ -114,4 +118,5 @@ func (c *OryHydra) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
 	c.Admin.SetTransport(transport)
 	c.Public.SetTransport(transport)
+	c.V0alpha2.SetTransport(transport)
 }

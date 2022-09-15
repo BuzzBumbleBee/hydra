@@ -54,6 +54,8 @@ const (
 	DefaultConsentPath    = "/oauth2/fallbacks/consent"
 	DefaultPostLogoutPath = "/oauth2/fallbacks/logout/callback"
 	DefaultLogoutPath     = "/oauth2/fallbacks/logout"
+	DefaultDevicePath     = "/oauth2/fallbacks/device"
+	DefaultPostDevicePath = "/oauth2/fallbacks/device/done"
 	DefaultErrorPath      = "/oauth2/fallbacks/error"
 	TokenPath             = "/oauth2/token" // #nosec G101
 	AuthPath              = "/oauth2/auth"
@@ -68,6 +70,10 @@ const (
 	RevocationPath   = "/oauth2/revoke"
 	FlushPath        = "/oauth2/flush"
 	DeleteTokensPath = "/oauth2/tokens" // #nosec G101
+
+	// Device Grant Handler
+	DeviceAuthPath  = "/oauth2/device/auth"
+	DeviceGrantPath = "/device"
 )
 
 type Handler struct {
@@ -91,6 +97,13 @@ func (h *Handler) SetRoutes(admin *x.RouterAdmin, public *x.RouterPublic, corsMi
 	public.GET(DefaultLoginPath, h.fallbackHandler("", "", http.StatusOK, config.KeyLoginURL))
 	public.GET(DefaultConsentPath, h.fallbackHandler("", "", http.StatusOK, config.KeyConsentURL))
 	public.GET(DefaultLogoutPath, h.fallbackHandler("", "", http.StatusOK, config.KeyLogoutURL))
+	public.GET(DefaultDevicePath, h.fallbackHandler("", "", http.StatusOK, config.KeyDeviceURL))
+	public.GET(DefaultPostDevicePath, h.fallbackHandler(
+		"You successfully authenticated on your device!",
+		"The Default Post Device URL is not set which is why you are seeing this fallback page. Your device login request however succeeded.",
+		http.StatusOK,
+		config.KeyDeviceDoneURL,
+	))
 	public.GET(DefaultPostLogoutPath, h.fallbackHandler(
 		"You logged out successfully!",
 		"The Default Post Logout URL is not set which is why you are seeing this fallback page. Your log out request however succeeded.",
@@ -110,6 +123,154 @@ func (h *Handler) SetRoutes(admin *x.RouterAdmin, public *x.RouterPublic, corsMi
 	admin.POST(IntrospectPath, h.IntrospectHandler)
 	admin.POST(FlushPath, h.FlushHandler)
 	admin.DELETE(DeleteTokensPath, h.DeleteHandler)
+
+	public.GET(DeviceAuthPath, h.performOAuth2DeviceAuthorizationFlow)
+	// This is only a shorthand to avoid people to type a long url;
+	public.GET(h.c.DeviceInternalURL().Path, h.performOAuth2DeviceAuthorizationFlow)
+	public.POST(DeviceAuthPath, h.performOAuth2DeviceFlow)
+}
+
+func (h *Handler) performOAuth2DeviceAuthorizationFlow(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var ctx = r.Context()
+
+	authorizeRequest, err := h.r.OAuth2Provider().NewDeviceAuthorizeRequest(ctx, r)
+	if err != nil {
+		x.LogError(r, err, h.r.Logger())
+		h.r.Writer().WriteError(w, r, err)
+		return
+	}
+
+	session, err := h.r.ConsentStrategy().HandleOAuth2DeviceAuthorizationRequest(w, r, authorizeRequest)
+	if errors.Is(err, consent.ErrAbortOAuth2Request) {
+		x.LogAudit(r, nil, h.r.AuditLogger())
+		// do nothing
+		return
+	} else if e := &(fosite.RFC6749Error{}); errors.As(err, &e) {
+		x.LogAudit(r, err, h.r.AuditLogger())
+		h.r.Writer().WriteError(w, r, err)
+		return
+	} else if err != nil {
+		x.LogError(r, err, h.r.Logger())
+		h.r.Writer().WriteError(w, r, err)
+		return
+	}
+
+	for _, scope := range session.GrantedScope {
+		authorizeRequest.GrantScope(scope)
+	}
+
+	for _, audience := range session.GrantedAudience {
+		authorizeRequest.GrantAudience(audience)
+	}
+
+	openIDKeyID, err := h.r.OpenIDJWTStrategy().GetPublicKeyID(r.Context())
+	if err != nil {
+		x.LogError(r, err, h.r.Logger())
+		h.r.Writer().WriteError(w, r, err)
+		return
+	}
+
+	var accessTokenKeyID string
+	if h.c.AccessTokenStrategy() == "jwt" {
+		accessTokenKeyID, err = h.r.AccessTokenJWTStrategy().GetPublicKeyID(r.Context())
+		if err != nil {
+			x.LogError(r, err, h.r.Logger())
+			h.r.Writer().WriteError(w, r, err)
+			return
+		}
+	}
+
+	authorizeRequest.SetID(session.ID)
+	claims := &jwt.IDTokenClaims{
+		Subject: session.ConsentRequest.SubjectIdentifier,
+		Issuer:  strings.TrimRight(h.c.IssuerURL().String(), "/") + "/",
+
+		AuthTime:                            time.Time(session.AuthenticatedAt),
+		RequestedAt:                         session.RequestedAt,
+		Extra:                               session.Session.IDToken,
+		AuthenticationContextClassReference: session.ConsentRequest.ACR,
+		AuthenticationMethodsReferences:     session.ConsentRequest.AMR,
+
+		// These are required for work around https://github.com/ory/fosite/issues/530
+		Nonce:    authorizeRequest.GetRequestForm().Get("nonce"),
+		Audience: []string{authorizeRequest.GetClient().GetID()},
+		IssuedAt: time.Now().Truncate(time.Second).UTC(),
+
+		// This is set by the fosite strategy
+		// ExpiresAt:   time.Now().Add(h.IDTokenLifespan).UTC(),
+	}
+	claims.Add("sid", session.ConsentRequest.LoginSessionID)
+
+	// done
+	response, err := h.r.OAuth2Provider().NewDeviceAuthorizeResponse(ctx, authorizeRequest, &Session{
+		DefaultSession: &openid.DefaultSession{
+			Claims: claims,
+			Headers: &jwt.Headers{Extra: map[string]interface{}{
+				// required for lookup on jwk endpoint
+				"kid": openIDKeyID,
+			}},
+			Subject: session.ConsentRequest.Subject,
+		},
+		Extra:                 session.Session.AccessToken,
+		KID:                   accessTokenKeyID,
+		ClientID:              authorizeRequest.GetClient().GetID(),
+		ConsentChallenge:      session.ID,
+		ExcludeNotBeforeClaim: h.c.ExcludeNotBeforeClaim(),
+		AllowedTopLevelClaims: h.c.AllowedTopLevelClaims(),
+	})
+	if err != nil {
+		x.LogError(r, err, h.r.Logger())
+		h.r.Writer().WriteError(w, r, err)
+		return
+	}
+
+	err = h.r.OAuth2Storage().UpdateDeviceCodeSession(ctx, authorizeRequest.GetDeviceCodeSignature(), authorizeRequest)
+	if err != nil {
+		h.r.Writer().WriteError(w, r, err)
+	}
+
+	h.r.OAuth2Provider().WriteDeviceAuthorizeResponse(w, authorizeRequest, response)
+}
+
+// swagger:route GET /oauth2/device/auth public performOAuth2DeviceFlow
+//
+// The OAuth 2.0 Device Authorize Endpoint
+//
+// This endpoint is not documented here because you should never use your own implementation to perform OAuth2 flows.
+// OAuth2 is a very popular protocol and a library for your programming language will exists.
+//
+// To learn more about this flow please refer to the specification: https://tools.ietf.org/html/rfc8628
+//
+//     Consumes:
+//     - application/x-www-form-urlencoded
+//
+//     Schemes: http, https
+//
+//     Responses:
+//       200: oAuth2ApiDeviceAuthorizationResponse
+//       401: jsonError
+//       500: jsonError
+func (h *Handler) performOAuth2DeviceFlow(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var ctx = r.Context()
+
+	request, err := h.r.OAuth2Provider().NewDeviceRequest(ctx, r)
+	if err != nil {
+		h.r.Writer().WriteError(w, r, err)
+		return
+	}
+
+	var session = &Session{
+		DefaultSession: &openid.DefaultSession{
+			Headers: &jwt.Headers{}},
+	}
+
+	request.SetSession(session)
+	resp, err := h.r.OAuth2Provider().NewDeviceResponse(ctx, request)
+	if err != nil {
+		h.r.Writer().WriteError(w, r, err)
+		return
+	}
+	h.r.OAuth2Provider().WriteDeviceResponse(w, request, resp)
 }
 
 // swagger:route GET /oauth2/sessions/logout public disconnectUser
@@ -235,6 +396,7 @@ func (h *Handler) WellKnownHandler(w http.ResponseWriter, r *http.Request) {
 		JWKsURI:                                h.c.JWKSURL().String(),
 		RevocationEndpoint:                     urlx.AppendPaths(h.c.IssuerURL(), RevocationPath).String(),
 		RegistrationEndpoint:                   h.c.OAuth2ClientRegistrationURL().String(),
+		DeviceAuthorisationEndpoint:            h.c.OAuth2DeviceAuthorisationURL().String(),
 		SubjectTypes:                           h.c.SubjectTypesSupported(),
 		ResponseTypes:                          []string{"code", "code id_token", "id_token", "token id_token", "token", "token id_token code"},
 		ClaimsSupported:                        h.c.OIDCDiscoverySupportedClaims(),
@@ -242,7 +404,7 @@ func (h *Handler) WellKnownHandler(w http.ResponseWriter, r *http.Request) {
 		UserinfoEndpoint:                       h.c.OIDCDiscoveryUserinfoEndpoint().String(),
 		TokenEndpointAuthMethodsSupported:      []string{"client_secret_post", "client_secret_basic", "private_key_jwt", "none"},
 		IDTokenSigningAlgValuesSupported:       []string{"RS256"},
-		GrantTypesSupported:                    []string{"authorization_code", "implicit", "client_credentials", "refresh_token"},
+		GrantTypesSupported:                    []string{"authorization_code", "implicit", "client_credentials", "refresh_token", "refresh_token", "urn:ietf:params:oauth:grant-type:device_code"},
 		ResponseModesSupported:                 []string{"query", "fragment"},
 		UserinfoSigningAlgValuesSupported:      []string{"none", "RS256"},
 		RequestParameterSupported:              true,

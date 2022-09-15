@@ -48,6 +48,7 @@ const (
 	LoginPath    = "/oauth2/auth/requests/login"
 	ConsentPath  = "/oauth2/auth/requests/consent"
 	LogoutPath   = "/oauth2/auth/requests/logout"
+	DevicePath   = "/oauth2/auth/requests/device"
 	SessionsPath = "/oauth2/auth/sessions"
 )
 
@@ -77,6 +78,8 @@ func (h *Handler) SetRoutes(admin *x.RouterAdmin) {
 	admin.GET(LogoutPath, h.GetLogoutRequest)
 	admin.PUT(LogoutPath+"/accept", h.AcceptLogoutRequest)
 	admin.PUT(LogoutPath+"/reject", h.RejectLogoutRequest)
+
+	admin.PUT(DevicePath+"/verify", h.adminVerifyUserCodeRequest)
 }
 
 // swagger:route DELETE /oauth2/auth/sessions/consent admin revokeConsentSessions
@@ -781,4 +784,86 @@ func (h *Handler) GetLogoutRequest(w http.ResponseWriter, r *http.Request, ps ht
 	}
 
 	h.r.Writer().Write(w, r, request)
+}
+
+// swagger:parameters adminVerifyUserCodeRequest
+type adminVerifyUserCodeRequest struct {
+	// in: query
+	// required: true
+	Challenge string `json:"device_challenge"`
+
+	// in: body
+	Body DeviceGrantVerifyUserCodeRequest
+}
+
+// swagger:route PUT /oauth2/auth/requests/device/verify admin adminVerifyUserCodeRequest
+//
+// Verifies a device grant request
+//
+// Verifies a device grant request
+//
+//	Consumes:
+//	- application/json
+//
+//	Produces:
+//	- application/json
+//
+//	Schemes: http, https
+//
+//	Responses:
+//	  200: completedRequest
+//	  404: jsonError
+//	  500: jsonError
+func (h *Handler) adminVerifyUserCodeRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	challenge := stringsx.Coalesce(
+		r.URL.Query().Get("device_challenge"),
+		r.URL.Query().Get("challenge"),
+	)
+	if challenge == "" {
+		h.r.Writer().WriteError(w, r, errorsx.WithStack(fosite.ErrInvalidRequest.WithHint(`Query parameter 'challenge' is not defined but should have been.`)))
+		return
+	}
+
+	var p DeviceGrantVerifyUserCodeRequest
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&p); err != nil {
+		h.r.Writer().WriteError(w, r, errorsx.WithStack(fosite.ErrInvalidRequest.WithWrap(err).WithHintf("Unable to decode body because: %s", err)))
+		return
+	}
+
+	if p.UserCode == "" {
+		h.r.Writer().WriteError(w, r, errorsx.WithStack(fosite.ErrInvalidRequest.WithHint("Field 'user_code' must not be empty.")))
+		return
+	}
+
+	userCodeSignature := h.r.OAuth2HMACStrategy().UserCodeSignature(p.UserCode)
+	userCodeRequest, err := h.r.OAuth2Storage().GetUserCodeSession(r.Context(), userCodeSignature, &fosite.DefaultSession{})
+	if err != nil {
+		h.r.Writer().WriteError(w, r, errorsx.WithStack(fosite.ErrNotFound.WithWrap(err).WithHint(`'user_code' session not found`)))
+		return
+	}
+
+	clientId := userCodeRequest.GetClient().GetID()
+	// UserCode & DeviceCode Request shares the same RequestId as it's the same request;
+	deviceRequestId := userCodeRequest.GetID()
+	requestedScopes := userCodeRequest.GetRequestedScopes()
+	requestedAudience := userCodeRequest.GetRequestedAudience()
+
+	err = h.r.OAuth2Storage().InvalidateUserCodeSession(r.Context(), userCodeSignature)
+	if err != nil {
+		h.r.Writer().WriteError(w, r, errorsx.WithStack(fosite.ErrServerError.WithWrap(err).WithHint(`Could not invalidate 'user_code'`)))
+		return
+	}
+
+	// req.GetID() is actually the DeviceCodeSignature
+	grantRequest, err := h.r.ConsentManager().AcceptDeviceGrantRequest(r.Context(), challenge, deviceRequestId, clientId, requestedScopes, requestedAudience)
+	if err != nil {
+		h.r.Writer().WriteError(w, r, errorsx.WithStack(fosite.ErrServerError.WithWrap(err).WithHint(`Could not accept device grant request`)))
+		return
+	}
+
+	h.r.Writer().Write(w, r, &RequestHandlerResponse{
+		RedirectTo: urlx.SetQuery(h.c.OAuth2DeviceAuthorisationURL(), url.Values{"device_verifier": {grantRequest.Verifier}, "client_id": {clientId}}).String(),
+	})
 }

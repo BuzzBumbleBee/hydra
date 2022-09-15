@@ -39,6 +39,7 @@ const (
 	KeyOIDCDiscoverySupportedClaims              = "webfinger.oidc_discovery.supported_claims"
 	KeyOIDCDiscoverySupportedScope               = "webfinger.oidc_discovery.supported_scope"
 	KeyOIDCDiscoveryUserinfoEndpoint             = "webfinger.oidc_discovery.userinfo_url"
+	KeyOAuth2DeviceAuthorisationURL              = "webfinger.oidc_discovery.device_authorization_url"
 	KeySubjectTypesSupported                     = "oidc.subject_identifiers.supported_types"
 	KeyDefaultClientScope                        = "oidc.dynamic_client_registration.default_scope"
 	KeyDSN                                       = "dsn"
@@ -51,6 +52,7 @@ const (
 	KeyRefreshTokenLifespan                      = "ttl.refresh_token" // #nosec G101
 	KeyIDTokenLifespan                           = "ttl.id_token"      // #nosec G101
 	KeyAuthCodeLifespan                          = "ttl.auth_code"
+	KeyDeviceAndUserCodeLifespan                 = "ttl.device_user_code" // #nosec G101
 	KeyScopeStrategy                             = "strategies.scope"
 	KeyGetCookieSecrets                          = "secrets.cookie"
 	KeyGetSystemSecret                           = "secrets.system"
@@ -59,11 +61,15 @@ const (
 	KeyLogoutURL                                 = "urls.logout"
 	KeyConsentURL                                = "urls.consent"
 	KeyErrorURL                                  = "urls.error"
+	KeyDeviceURL                                 = "urls.device"
+	KeyDeviceDoneURL                             = "urls.post_device_done"
 	KeyPublicURL                                 = "urls.self.public"
 	KeyIssuerURL                                 = "urls.self.issuer"
+	KeyDeviceInternalURL                         = "urls.self.device"
 	KeyAccessTokenStrategy                       = "strategies.access_token"
 	KeySubjectIdentifierAlgorithmSalt            = "oidc.subject_identifiers.pairwise.salt"
 	KeyPublicAllowDynamicRegistration            = "oidc.dynamic_client_registration.enabled"
+	KeyDeviceAuthTokenPollingInterval            = "oauth2.device_authorization.token_polling_interval" // #nosec G101
 	KeyPKCEEnforced                              = "oauth2.pkce.enforced"
 	KeyPKCEEnforcedForPublicClients              = "oauth2.pkce.enforced_for_public_clients"
 	KeyLogLevel                                  = "log.level"
@@ -349,6 +355,14 @@ func (p *Provider) fallbackURL(path string, host string, port int) *url.URL {
 	return &u
 }
 
+func (p *Provider) GetDeviceAndUserCodeLifespan() time.Duration {
+	return p.p.DurationF(KeyDeviceAndUserCodeLifespan, time.Minute*15)
+}
+
+func (p *Provider) GetDeviceAuthTokenPollingInterval() time.Duration {
+	return p.p.DurationF(KeyDeviceAuthTokenPollingInterval, time.Second*5)
+}
+
 func (p *Provider) LoginURL() *url.URL {
 	return urlRoot(p.p.URIF(KeyLoginURL, p.publicFallbackURL("oauth2/fallbacks/login")))
 }
@@ -365,8 +379,20 @@ func (p *Provider) ErrorURL() *url.URL {
 	return urlRoot(p.p.RequestURIF(KeyErrorURL, p.publicFallbackURL("oauth2/fallbacks/error")))
 }
 
+func (p *Provider) DeviceUrl() *url.URL {
+	return urlRoot(p.p.URIF(KeyDeviceURL, p.publicFallbackURL("oauth2/fallbacks/device")))
+}
+
+func (p *Provider) DeviceDoneURL() *url.URL {
+	return urlRoot(p.p.RequestURIF(KeyDeviceDoneURL, p.publicFallbackURL("oauth2/fallbacks/device/done")))
+}
+
 func (p *Provider) PublicURL() *url.URL {
 	return urlRoot(p.p.RequestURIF(KeyPublicURL, p.IssuerURL()))
+}
+
+func (p *Provider) DeviceInternalURL() *url.URL {
+	return urlRoot(p.p.RequestURIF(KeyDeviceInternalURL, urlx.AppendPaths(p.PublicURL(), "/device")))
 }
 
 func (p *Provider) IssuerURL() *url.URL {
@@ -385,6 +411,10 @@ func (p *Provider) OAuth2TokenURL() *url.URL {
 
 func (p *Provider) OAuth2AuthURL() *url.URL {
 	return p.p.RequestURIF(KeyOAuth2AuthURL, urlx.AppendPaths(p.PublicURL(), "/oauth2/auth"))
+}
+
+func (p *Provider) OAuth2DeviceAuthorisationURL() *url.URL {
+	return p.p.RequestURIF(KeyOAuth2DeviceAuthorisationURL, urlx.AppendPaths(p.PublicURL(), "/oauth2/device/auth"))
 }
 
 func (p *Provider) JWKSURL() *url.URL {

@@ -512,6 +512,38 @@
         "title": "Used to pass session data to a consent request.",
         "type": "object"
       },
+      "deviceGrantRequest": {
+        "properties": {
+          "challenge": {
+            "description": "ID is the identifier (\"device challenge\") of the device grant request. It is used to\nidentify the session.",
+            "type": "string"
+          },
+          "client": {
+            "$ref": "#/components/schemas/oAuth2Client"
+          },
+          "handled_at": {
+            "$ref": "#/components/schemas/nullTime"
+          },
+          "request_url": {
+            "description": "RequestURL is the original Device Grant URL requested.",
+            "type": "string"
+          },
+          "requested_access_token_audience": {
+            "$ref": "#/components/schemas/StringSlicePipeDelimiter"
+          },
+          "requested_scope": {
+            "$ref": "#/components/schemas/StringSlicePipeDelimiter"
+          }
+        },
+        "required": [
+          "challenge",
+          "requested_scope",
+          "requested_access_token_audience",
+          "client"
+        ],
+        "title": "Contains information on an ongoing device grant request.",
+        "type": "object"
+      },
       "flushInactiveOAuth2TokensRequest": {
         "properties": {
           "notAfter": {
@@ -767,6 +799,45 @@
           }
         },
         "title": "Requester is a token endpoint's request context.",
+        "type": "object"
+      },
+      "oAuth2ApiDeviceAuthorizationResponse": {
+        "description": "Ory's OAuth 2.0 Device Authorization API",
+        "properties": {
+          "device_code": {
+            "description": "The device verification code.",
+            "example": "ory_dc_smldfksmdfkl.mslkmlkmlk",
+            "type": "string"
+          },
+          "expires_in": {
+            "description": "The lifetime in seconds of the \"device_code\" and \"user_code\".",
+            "example": 16830,
+            "format": "int64",
+            "type": "integer"
+          },
+          "interval": {
+            "description": "The minimum amount of time in seconds that the client\nSHOULD wait between polling requests to the token endpoint.  If no\nvalue is provided, clients MUST use 5 as the default.",
+            "example": 5,
+            "format": "int64",
+            "type": "integer"
+          },
+          "user_code": {
+            "description": "The end-user verification code.",
+            "example": "AAAAAA",
+            "type": "string"
+          },
+          "verification_uri": {
+            "description": "The end-user verification URI on the authorization\nserver.  The URI should be short and easy to remember as end users\nwill be asked to manually type it into their user agent.",
+            "example": "https://auth.ory.sh/tv",
+            "type": "string"
+          },
+          "verification_uri_complete": {
+            "description": "A verification URI that includes the \"user_code\" (or\nother information with the same function as the \"user_code\"),\nwhich is designed for non-textual transmission.",
+            "example": "https://auth.ory.sh/tv?user_code=AAAAAA",
+            "type": "string"
+          }
+        },
+        "title": "OAuth2 Device Flow",
         "type": "object"
       },
       "oAuth2Client": {
@@ -1422,6 +1493,15 @@
         },
         "type": "object"
       },
+      "verifyUserCodeRequest": {
+        "description": "Contains information on an device verification",
+        "properties": {
+          "user_code": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "version": {
         "properties": {
           "version": {
@@ -1464,6 +1544,10 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "device_authorization_endpoint": {
+            "description": "URL of the authorization server's device authorization endpoint",
+            "type": "string"
           },
           "end_session_endpoint": {
             "description": "URL at the OP to which an RP can perform a redirect to request that the End-User be logged out at the OP.",
@@ -2801,6 +2885,68 @@
         ]
       }
     },
+    "/oauth2/auth/requests/device/verify": {
+      "put": {
+        "description": "Verifies a device grant request",
+        "operationId": "adminVerifyUserCodeRequest",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "device_challenge",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/verifyUserCodeRequest"
+              }
+            }
+          },
+          "x-originalParamName": "Body"
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/completedRequest"
+                }
+              }
+            },
+            "description": "completedRequest"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/jsonError"
+                }
+              }
+            },
+            "description": "jsonError"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/jsonError"
+                }
+              }
+            },
+            "description": "jsonError"
+          }
+        },
+        "summary": "Verifies a device grant request",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/oauth2/auth/requests/login": {
       "get": {
         "description": "When an authorization code, hybrid, or implicit OAuth 2.0 Flow is initiated, ORY Hydra asks the login provider\n(sometimes called \"identity provider\") to authenticate the subject and then tell ORY Hydra now about it. The login\nprovider is an web-app you write and host, and it must be able to authenticate (\"show the subject a login screen\")\na subject (in OAuth2 the proper name for subject is \"resource owner\").\n\nThe authentication challenge is appended to the login provider URL to which the subject's user-agent (browser) is redirected to. The login\nprovider uses that challenge to fetch information on the OAuth2 request and then accept or reject the requested authentication process.",
@@ -3376,6 +3522,48 @@
         "summary": "Invalidates All Login Sessions of a Certain User\nInvalidates a Subject's Authentication Session",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/oauth2/device/auth": {
+      "get": {
+        "description": "This endpoint is not documented here because you should never use your own implementation to perform OAuth2 flows.\nOAuth2 is a very popular protocol and a library for your programming language will exists.\n\nTo learn more about this flow please refer to the specification: https://tools.ietf.org/html/rfc8628",
+        "operationId": "performOAuth2DeviceFlow",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/oAuth2ApiDeviceAuthorizationResponse"
+                }
+              }
+            },
+            "description": "oAuth2ApiDeviceAuthorizationResponse"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/jsonError"
+                }
+              }
+            },
+            "description": "jsonError"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/jsonError"
+                }
+              }
+            },
+            "description": "jsonError"
+          }
+        },
+        "summary": "The OAuth 2.0 Device Authorize Endpoint",
+        "tags": [
+          "v0alpha2"
         ]
       }
     },

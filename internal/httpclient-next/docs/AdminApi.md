@@ -7,6 +7,7 @@ All URIs are relative to _http://localhost_
 | [**AcceptConsentRequest**](AdminApi.md#AcceptConsentRequest)               | **Put** /oauth2/auth/requests/consent/accept     | Accept a Consent Request                                                                            |
 | [**AcceptLoginRequest**](AdminApi.md#AcceptLoginRequest)                   | **Put** /oauth2/auth/requests/login/accept       | Accept a Login Request                                                                              |
 | [**AcceptLogoutRequest**](AdminApi.md#AcceptLogoutRequest)                 | **Put** /oauth2/auth/requests/logout/accept      | Accept a Logout Request                                                                             |
+| [**AdminVerifyUserCodeRequest**](AdminApi.md#AdminVerifyUserCodeRequest)   | **Put** /oauth2/auth/requests/device/verify      | Verifies a device grant request                                                                     |
 | [**CreateJsonWebKeySet**](AdminApi.md#CreateJsonWebKeySet)                 | **Post** /keys/{set}                             | Generate a New JSON Web Key                                                                         |
 | [**CreateOAuth2Client**](AdminApi.md#CreateOAuth2Client)                   | **Post** /clients                                | Create an OAuth 2.0 Client                                                                          |
 | [**DeleteJsonWebKey**](AdminApi.md#DeleteJsonWebKey)                       | **Delete** /keys/{set}/{kid}                     | Delete a JSON Web Key                                                                               |
@@ -224,6 +225,71 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: application/json
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+## AdminVerifyUserCodeRequest
+
+> CompletedRequest
+> AdminVerifyUserCodeRequest(ctx).DeviceChallenge(deviceChallenge).VerifyUserCodeRequest(verifyUserCodeRequest).Execute()
+
+Verifies a device grant request
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    deviceChallenge := "deviceChallenge_example" // string |
+    verifyUserCodeRequest := *openapiclient.NewVerifyUserCodeRequest() // VerifyUserCodeRequest |  (optional)
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.AdminApi.AdminVerifyUserCodeRequest(context.Background()).DeviceChallenge(deviceChallenge).VerifyUserCodeRequest(verifyUserCodeRequest).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `AdminApi.AdminVerifyUserCodeRequest``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+    // response from `AdminVerifyUserCodeRequest`: CompletedRequest
+    fmt.Fprintf(os.Stdout, "Response from `AdminApi.AdminVerifyUserCodeRequest`: %v\n", resp)
+}
+```
+
+### Path Parameters
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a
+apiAdminVerifyUserCodeRequestRequest struct via the builder pattern
+
+| Name                      | Type                                                  | Description | Notes |
+| ------------------------- | ----------------------------------------------------- | ----------- | ----- |
+| **deviceChallenge**       | **string**                                            |             |
+| **verifyUserCodeRequest** | [**VerifyUserCodeRequest**](VerifyUserCodeRequest.md) |             |
+
+### Return type
+
+[**CompletedRequest**](CompletedRequest.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: application/json
 - **Accept**: application/json
 
 [[Back to top]](#)

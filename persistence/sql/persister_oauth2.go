@@ -50,11 +50,13 @@ type (
 )
 
 const (
-	sqlTableOpenID  tableName = "oidc"
-	sqlTableAccess  tableName = "access"
-	sqlTableRefresh tableName = "refresh"
-	sqlTableCode    tableName = "code"
-	sqlTablePKCE    tableName = "pkce"
+	sqlTableOpenID     tableName = "oidc"
+	sqlTableAccess     tableName = "access"
+	sqlTableRefresh    tableName = "refresh"
+	sqlTableCode       tableName = "code"
+	sqlTablePKCE       tableName = "pkce"
+	sqlTableDeviceCode tableName = "device_code"
+	sqlTableUserCode   tableName = "user_code"
 )
 
 func (r OAuth2RequestSQL) TableName() string {
@@ -221,6 +223,23 @@ func (p *Persister) createSession(ctx context.Context, signature string, request
 	return nil
 }
 
+func (p *Persister) updateSessionBySignature(ctx context.Context, signature string, requester fosite.Requester, table tableName) error {
+	req, err := p.sqlSchemaFromRequest(signature, requester, table)
+	if err != nil {
+		return err
+	}
+
+	if err := sqlcon.HandleError(p.Connection(ctx).Update(req)); err != nil {
+		if errors.Is(err, sqlcon.ErrConcurrentUpdate) {
+			return errors.Wrap(fosite.ErrSerializationFailure, err.Error())
+		} else if strings.Contains(err.Error(), "Error 1213") { // InnoDB Deadlock?
+			return errors.Wrap(fosite.ErrSerializationFailure, err.Error())
+		}
+		return err
+	}
+	return nil
+}
+
 func (p *Persister) findSessionBySignature(ctx context.Context, rawSignature string, session fosite.Session, table tableName) (fosite.Requester, error) {
 	rawSignature = p.hashSignature(rawSignature, table)
 
@@ -237,11 +256,26 @@ func (p *Persister) findSessionBySignature(ctx context.Context, rawSignature str
 			fr, err = r.toRequest(ctx, session, p)
 			if err != nil {
 				return err
-			} else if table == sqlTableCode {
+			}
+			switch table {
+			case sqlTableCode:
 				return errorsx.WithStack(fosite.ErrInvalidatedAuthorizeCode)
+			case sqlTableDeviceCode:
+				return errorsx.WithStack(fosite.ErrInvalidatedDeviceCode)
+			case sqlTableUserCode:
+				return errorsx.WithStack(fosite.ErrInvalidatedUserCode)
 			}
 
 			return errorsx.WithStack(fosite.ErrInactiveToken)
+		} else if !r.ConsentChallenge.Valid {
+			fr, err = r.toRequest(ctx, session, p)
+			if err != nil {
+				return err
+			}
+
+			if table == sqlTableDeviceCode {
+				return errorsx.WithStack(fosite.ErrAuthorizationPending)
+			}
 		}
 
 		fr, err = r.toRequest(ctx, session, p)
@@ -432,5 +466,45 @@ func (p *Persister) DeleteAccessTokens(ctx context.Context, clientID string) err
 	return sqlcon.HandleError(
 		p.Connection(ctx).
 			RawQuery(fmt.Sprintf("DELETE FROM %s WHERE client_id=?", OAuth2RequestSQL{Table: sqlTableAccess}.TableName()), clientID).
+			Exec())
+}
+
+func (p *Persister) CreateDeviceCodeSession(ctx context.Context, signature string, requester fosite.Requester) error {
+	return p.createSession(ctx, signature, requester, sqlTableDeviceCode)
+}
+
+func (p *Persister) UpdateDeviceCodeSession(ctx context.Context, signature string, requester fosite.Requester) error {
+	return p.updateSessionBySignature(ctx, signature, requester, sqlTableDeviceCode)
+}
+
+func (p *Persister) GetDeviceCodeSession(ctx context.Context, signature string, session fosite.Session) (fosite.Requester, error) {
+	return p.findSessionBySignature(ctx, signature, session, sqlTableDeviceCode)
+}
+
+func (p *Persister) InvalidateDeviceCodeSession(ctx context.Context, signature string) error {
+	/* #nosec G201 table is static */
+	return sqlcon.HandleError(
+		p.Connection(ctx).
+			RawQuery(
+				fmt.Sprintf("UPDATE %s SET active=false WHERE signature=?", OAuth2RequestSQL{Table: sqlTableDeviceCode}.TableName()),
+				signature).
+			Exec())
+}
+
+func (p *Persister) CreateUserCodeSession(ctx context.Context, signature string, requester fosite.Requester) error {
+	return p.createSession(ctx, signature, requester, sqlTableUserCode)
+}
+
+func (p *Persister) GetUserCodeSession(ctx context.Context, signature string, session fosite.Session) (fosite.Requester, error) {
+	return p.findSessionBySignature(ctx, signature, session, sqlTableUserCode)
+}
+
+func (p *Persister) InvalidateUserCodeSession(ctx context.Context, signature string) error {
+	/* #nosec G201 table is static */
+	return sqlcon.HandleError(
+		p.Connection(ctx).
+			RawQuery(
+				fmt.Sprintf("UPDATE %s SET active=false WHERE signature=?", OAuth2RequestSQL{Table: sqlTableUserCode}.TableName()),
+				signature).
 			Exec())
 }

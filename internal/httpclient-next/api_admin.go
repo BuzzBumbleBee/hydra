@@ -100,6 +100,20 @@ type AdminApi interface {
 	AcceptLogoutRequestExecute(r AdminApiApiAcceptLogoutRequestRequest) (*CompletedRequest, *http.Response, error)
 
 	/*
+	 * AdminVerifyUserCodeRequest Verifies a device grant request
+	 * Verifies a device grant request
+	 * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	 * @return AdminApiApiAdminVerifyUserCodeRequestRequest
+	 */
+	AdminVerifyUserCodeRequest(ctx context.Context) AdminApiApiAdminVerifyUserCodeRequestRequest
+
+	/*
+	 * AdminVerifyUserCodeRequestExecute executes the request
+	 * @return CompletedRequest
+	 */
+	AdminVerifyUserCodeRequestExecute(r AdminApiApiAdminVerifyUserCodeRequestRequest) (*CompletedRequest, *http.Response, error)
+
+	/*
 			 * CreateJsonWebKeySet Generate a New JSON Web Key
 			 * This endpoint is capable of generating JSON Web Key Sets for you. There a different strategies available, such as symmetric cryptographic keys (HS256, HS512) and asymetric cryptographic keys (RS256, ECDSA). If the specified JSON Web Key Set does not exist, it will be created.
 
@@ -1038,6 +1052,143 @@ func (a *AdminApiService) AcceptLogoutRequestExecute(r AdminApiApiAcceptLogoutRe
 	if localVarHTTPHeaderAccept != "" {
 		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
 	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFormFileName, localVarFileName, localVarFileBytes)
+	if err != nil {
+		return localVarReturnValue, nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		if localVarHTTPResponse.StatusCode == 404 {
+			var v JsonError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 500 {
+			var v JsonError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.model = v
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+	if err != nil {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: err.Error(),
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	return localVarReturnValue, localVarHTTPResponse, nil
+}
+
+type AdminApiApiAdminVerifyUserCodeRequestRequest struct {
+	ctx                   context.Context
+	ApiService            AdminApi
+	deviceChallenge       *string
+	verifyUserCodeRequest *VerifyUserCodeRequest
+}
+
+func (r AdminApiApiAdminVerifyUserCodeRequestRequest) DeviceChallenge(deviceChallenge string) AdminApiApiAdminVerifyUserCodeRequestRequest {
+	r.deviceChallenge = &deviceChallenge
+	return r
+}
+func (r AdminApiApiAdminVerifyUserCodeRequestRequest) VerifyUserCodeRequest(verifyUserCodeRequest VerifyUserCodeRequest) AdminApiApiAdminVerifyUserCodeRequestRequest {
+	r.verifyUserCodeRequest = &verifyUserCodeRequest
+	return r
+}
+
+func (r AdminApiApiAdminVerifyUserCodeRequestRequest) Execute() (*CompletedRequest, *http.Response, error) {
+	return r.ApiService.AdminVerifyUserCodeRequestExecute(r)
+}
+
+/*
+ * AdminVerifyUserCodeRequest Verifies a device grant request
+ * Verifies a device grant request
+ * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ * @return AdminApiApiAdminVerifyUserCodeRequestRequest
+ */
+func (a *AdminApiService) AdminVerifyUserCodeRequest(ctx context.Context) AdminApiApiAdminVerifyUserCodeRequestRequest {
+	return AdminApiApiAdminVerifyUserCodeRequestRequest{
+		ApiService: a,
+		ctx:        ctx,
+	}
+}
+
+/*
+ * Execute executes the request
+ * @return CompletedRequest
+ */
+func (a *AdminApiService) AdminVerifyUserCodeRequestExecute(r AdminApiApiAdminVerifyUserCodeRequestRequest) (*CompletedRequest, *http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodPut
+		localVarPostBody     interface{}
+		localVarFormFileName string
+		localVarFileName     string
+		localVarFileBytes    []byte
+		localVarReturnValue  *CompletedRequest
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "AdminApiService.AdminVerifyUserCodeRequest")
+	if err != nil {
+		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/oauth2/auth/requests/device/verify"
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+	if r.deviceChallenge == nil {
+		return localVarReturnValue, nil, reportError("deviceChallenge is required and must be specified")
+	}
+
+	localVarQueryParams.Add("device_challenge", parameterToString(*r.deviceChallenge, ""))
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{"application/json"}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{"application/json"}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	// body params
+	localVarPostBody = r.verifyUserCodeRequest
 	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFormFileName, localVarFileName, localVarFileBytes)
 	if err != nil {
 		return localVarReturnValue, nil, err

@@ -45,6 +45,9 @@ type WellKnown struct {
 	// by this authorization server.
 	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 
+	// URL of the authorization server's device authorization endpoint
+	DeviceAuthorizationEndpoint string `json:"device_authorization_endpoint,omitempty"`
+
 	// URL at the OP to which an RP can perform a redirect to request that the End-User be logged out at the OP.
 	EndSessionEndpoint string `json:"end_session_endpoint,omitempty"`
 

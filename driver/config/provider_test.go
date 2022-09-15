@@ -267,6 +267,7 @@ func TestViperProviderValidates(t *testing.T) {
 	// webfinger
 	assert.Equal(t, []string{"hydra.openid.id-token"}, c.WellKnownKeys())
 	assert.Equal(t, urlx.ParseOrPanic("https://example.com"), c.OAuth2ClientRegistrationURL())
+	assert.Equal(t, urlx.ParseOrPanic("https://example.com/device_authorization"), c.OAuth2DeviceAuthorisationURL())
 	assert.Equal(t, urlx.ParseOrPanic("https://example.com/jwks.json"), c.JWKSURL())
 	assert.Equal(t, urlx.ParseOrPanic("https://example.com/auth"), c.OAuth2AuthURL())
 	assert.Equal(t, urlx.ParseOrPanic("https://example.com/token"), c.OAuth2TokenURL())
@@ -282,11 +283,17 @@ func TestViperProviderValidates(t *testing.T) {
 	// urls
 	assert.Equal(t, urlx.ParseOrPanic("https://issuer/"), c.IssuerURL())
 	assert.Equal(t, urlx.ParseOrPanic("https://public/"), c.PublicURL())
+	assert.Equal(t, urlx.ParseOrPanic("https://admin/"), c.AdminURL())
 	assert.Equal(t, urlx.ParseOrPanic("https://login/"), c.LoginURL())
 	assert.Equal(t, urlx.ParseOrPanic("https://consent/"), c.ConsentURL())
+	assert.Equal(t, urlx.ParseOrPanic("https://device/"), c.DeviceUrl())
 	assert.Equal(t, urlx.ParseOrPanic("https://logout/"), c.LogoutURL())
 	assert.Equal(t, urlx.ParseOrPanic("https://error/"), c.ErrorURL())
 	assert.Equal(t, urlx.ParseOrPanic("https://post_logout/"), c.LogoutRedirectURL())
+	assert.Equal(t, urlx.ParseOrPanic("https://post_device/"), c.DeviceDoneURL(ctx))
+
+	// self
+	assert.Equal(t, urlx.ParseOrPanic("https://public/device"), c.DeviceInternalURL(ctx))
 
 	// strategies
 	assert.Equal(t, "exact", c.ScopeStrategy())
@@ -299,6 +306,8 @@ func TestViperProviderValidates(t *testing.T) {
 	assert.Equal(t, 2*time.Hour, c.RefreshTokenLifespan())
 	assert.Equal(t, 2*time.Hour, c.IDTokenLifespan())
 	assert.Equal(t, 2*time.Hour, c.AuthCodeLifespan())
+	assert.Equal(t, 2*time.Hour, c.GetAuthorizeCodeLifespan())
+	assert.Equal(t, 2*time.Hour, c.DeviceAndUserCodeLifespan())
 
 	// oauth2
 	assert.Equal(t, true, c.ShareOAuth2Debug())
@@ -306,6 +315,7 @@ func TestViperProviderValidates(t *testing.T) {
 	assert.Equal(t, 20, c.BCryptCost())
 	assert.Equal(t, true, c.PKCEEnforced())
 	assert.Equal(t, true, c.EnforcePKCEForPublicClients())
+	assert.Equal(t, 2*time.Hour, c.GetDeviceAuthTokenPollingInterval())
 
 	// secrets
 	assert.Equal(t, []byte{0x64, 0x40, 0x5f, 0xd4, 0x66, 0xc9, 0x8c, 0x88, 0xa7, 0xf2, 0xcb, 0x95, 0xcd, 0x95, 0xcb, 0xa3, 0x41, 0x49, 0x8b, 0x97, 0xba, 0x9e, 0x92, 0xee, 0x4c, 0xaf, 0xe0, 0x71, 0x23, 0x28, 0xeb, 0xfc}, c.GetSystemSecret())
@@ -364,16 +374,20 @@ func TestLoginConsentURL(t *testing.T) {
 	p := MustNew(context.Background(), l)
 	p.MustSet(KeyLoginURL, "http://localhost:8080/oauth/login")
 	p.MustSet(KeyConsentURL, "http://localhost:8080/oauth/consent")
+	p.MustSet(KeyDeviceURL, "http://localhost:8080/oauth/device")
 
 	assert.Equal(t, "http://localhost:8080/oauth/login", p.LoginURL().String())
 	assert.Equal(t, "http://localhost:8080/oauth/consent", p.ConsentURL().String())
+	assert.Equal(t, "http://localhost:8080/oauth/device", p.DeviceUrl().String())
 
 	p2 := MustNew(context.Background(), l)
 	p2.MustSet(KeyLoginURL, "http://localhost:3000/#/oauth/login")
 	p2.MustSet(KeyConsentURL, "http://localhost:3000/#/oauth/consent")
+	p2.MustSet(KeyDeviceURL, "http://localhost:3000/#/oauth/device")
 
 	assert.Equal(t, "http://localhost:3000/#/oauth/login", p2.LoginURL().String())
 	assert.Equal(t, "http://localhost:3000/#/oauth/consent", p2.ConsentURL().String())
+	assert.Equal(t, "http://localhost:3000/#/oauth/device", p2.DeviceUrl().String())
 }
 
 func TestInfinitRefreshTokenTTL(t *testing.T) {

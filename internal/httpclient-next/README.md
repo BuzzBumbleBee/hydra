@@ -92,6 +92,7 @@ All URIs are relative to _http://localhost_
 | _AdminApi_    | [**AcceptConsentRequest**](docs/AdminApi.md#acceptconsentrequest)                                                | **Put** /oauth2/auth/requests/consent/accept     | Accept a Consent Request                                                                               |
 | _AdminApi_    | [**AcceptLoginRequest**](docs/AdminApi.md#acceptloginrequest)                                                    | **Put** /oauth2/auth/requests/login/accept       | Accept a Login Request                                                                                 |
 | _AdminApi_    | [**AcceptLogoutRequest**](docs/AdminApi.md#acceptlogoutrequest)                                                  | **Put** /oauth2/auth/requests/logout/accept      | Accept a Logout Request                                                                                |
+| _AdminApi_    | [**AdminVerifyUserCodeRequest**](docs/AdminApi.md#adminverifyusercoderequest)                                    | **Put** /oauth2/auth/requests/device/verify      | Verifies a device grant request                                                                        |
 | _AdminApi_    | [**CreateJsonWebKeySet**](docs/AdminApi.md#createjsonwebkeyset)                                                  | **Post** /keys/{set}                             | Generate a New JSON Web Key                                                                            |
 | _AdminApi_    | [**CreateOAuth2Client**](docs/AdminApi.md#createoauth2client)                                                    | **Post** /clients                                | Create an OAuth 2.0 Client                                                                             |
 | _AdminApi_    | [**DeleteJsonWebKey**](docs/AdminApi.md#deletejsonwebkey)                                                        | **Delete** /keys/{set}/{kid}                     | Delete a JSON Web Key                                                                                  |
@@ -136,6 +137,7 @@ All URIs are relative to _http://localhost_
 | _PublicApi_   | [**RevokeOAuth2Token**](docs/PublicApi.md#revokeoauth2token)                                                     | **Post** /oauth2/revoke                          | Revoke OAuth2 Tokens                                                                                   |
 | _PublicApi_   | [**Userinfo**](docs/PublicApi.md#userinfo)                                                                       | **Get** /userinfo                                | OpenID Connect Userinfo                                                                                |
 | _PublicApi_   | [**WellKnown**](docs/PublicApi.md#wellknown)                                                                     | **Get** /.well-known/jwks.json                   | JSON Web Keys Discovery                                                                                |
+| _V0alpha2Api_ | [**PerformOAuth2DeviceFlow**](docs/V0alpha2Api.md#performoauth2deviceflow)                                       | **Get** /oauth2/device/auth                      | The OAuth 2.0 Device Authorize Endpoint                                                                |
 
 ## Documentation For Models
 
@@ -145,6 +147,7 @@ All URIs are relative to _http://localhost_
 - [ConsentRequest](docs/ConsentRequest.md)
 - [ConsentRequestSession](docs/ConsentRequestSession.md)
 - [DefaultSession](docs/DefaultSession.md)
+- [DeviceGrantRequest](docs/DeviceGrantRequest.md)
 - [FlushInactiveOAuth2TokensRequest](docs/FlushInactiveOAuth2TokensRequest.md)
 - [FlushLoginConsentRequest](docs/FlushLoginConsentRequest.md)
 - [GenericError](docs/GenericError.md)
@@ -162,6 +165,7 @@ All URIs are relative to _http://localhost_
 - [LoginRequest](docs/LoginRequest.md)
 - [LogoutRequest](docs/LogoutRequest.md)
 - [OAuth2AccessRequest](docs/OAuth2AccessRequest.md)
+- [OAuth2ApiDeviceAuthorizationResponse](docs/OAuth2ApiDeviceAuthorizationResponse.md)
 - [OAuth2Client](docs/OAuth2Client.md)
 - [OAuth2TokenIntrospection](docs/OAuth2TokenIntrospection.md)
 - [Oauth2TokenResponse](docs/Oauth2TokenResponse.md)
@@ -179,6 +183,7 @@ All URIs are relative to _http://localhost_
 - [TrustedJwtGrantIssuer](docs/TrustedJwtGrantIssuer.md)
 - [UpdateOAuth2ClientLifespans](docs/UpdateOAuth2ClientLifespans.md)
 - [UserinfoResponse](docs/UserinfoResponse.md)
+- [VerifyUserCodeRequest](docs/VerifyUserCodeRequest.md)
 - [Version](docs/Version.md)
 - [WellKnown](docs/WellKnown.md)
 

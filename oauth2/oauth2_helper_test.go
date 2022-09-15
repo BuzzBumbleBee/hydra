@@ -21,6 +21,7 @@
 package oauth2_test
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -61,4 +62,24 @@ func (c *consentMock) HandleOAuth2AuthorizationRequest(w http.ResponseWriter, r 
 
 func (c *consentMock) HandleOpenIDConnectLogout(w http.ResponseWriter, r *http.Request) (*consent.LogoutResult, error) {
 	panic("not implemented")
+}
+
+func (c *consentMock) HandleOAuth2DeviceAuthorizationRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, req fosite.DeviceAuthorizeRequester) (*consent.AcceptOAuth2ConsentRequest, error) {
+	if c.deny {
+		return nil, fosite.ErrRequestForbidden
+	}
+
+	return &consent.AcceptOAuth2ConsentRequest{
+		ConsentRequest: &consent.OAuth2ConsentRequest{
+			Subject: "foo",
+			ACR:     "1",
+		},
+		AuthenticatedAt: sqlxx.NullTime(c.authTime),
+		GrantedScope:    []string{"offline", "openid", "hydra.*"},
+		Session: &consent.AcceptOAuth2ConsentRequestSession{
+			AccessToken: map[string]interface{}{},
+			IDToken:     map[string]interface{}{},
+		},
+		RequestedAt: c.requestTime,
+	}, nil
 }
