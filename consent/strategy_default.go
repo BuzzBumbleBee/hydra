@@ -1167,6 +1167,7 @@ func (s *DefaultStrategy) HandleOAuth2DeviceAuthorizationRequest(w http.Response
 		return nil, err
 	}
 	req.SetDeviceCodeSignature(deviceSession.DeviceCodeSignature.String())
+	req.SetDeviceDoneUrl(s.c.DeviceDoneURL())
 
 	consentSession, err := s.verifyConsent(w, r, req, consentVerifier)
 	if err != nil {
