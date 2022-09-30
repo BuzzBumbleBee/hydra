@@ -649,6 +649,12 @@
           "description": "When a user agent requests to logout, it will be redirected to this url afterwards per default.",
           "format": "uri",
           "examples": ["https://my-example.app/logout-successful"]
+        },
+        "post_device_done": {
+          "type": "string",
+          "description": "When a user agent requests to device auth flow, it will be redirected to this url after a sucessfull login per default.",
+          "format": "uri",
+          "examples": ["https://my-example.app/device-successful"]
         }
       }
     },
