@@ -217,6 +217,60 @@ func (p *Persister) GetConsentRequest(ctx context.Context, challenge string) (*c
 	return f.GetConsentRequest(), nil
 }
 
+func (p *Persister) CreateDeviceGrantRequest(ctx context.Context, req *consent.DeviceGrantRequest) error {
+	return errorsx.WithStack(p.CreateWithNetwork(ctx, req))
+}
+
+func (p *Persister) GetDeviceGrantRequestByVerifier(ctx context.Context, verifier string) (*consent.DeviceGrantRequest, error) {
+	ctx, span := p.r.Tracer(ctx).Tracer().Start(ctx, "persistence.sql.GetDeviceGrantRequestByVerifier")
+	defer span.End()
+
+	var dgr consent.DeviceGrantRequest
+	return &dgr, p.transaction(ctx, func(ctx context.Context, c *pop.Connection) error {
+		if err := c.Where("verifier = ?", verifier).First(&dgr); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return errorsx.WithStack(x.ErrNotFound)
+			}
+			return sqlcon.HandleError(err)
+		}
+
+		return nil
+	})
+}
+
+func (p *Persister) AcceptDeviceGrantRequest(ctx context.Context, challenge string, device_code_signature string, client_id string, requested_scopes fosite.Arguments, requested_aud fosite.Arguments) (*consent.DeviceGrantRequest, error) {
+	var dgr consent.DeviceGrantRequest
+	return &dgr, p.transaction(ctx, func(ctx context.Context, c *pop.Connection) error {
+		if err := p.QueryWithNetwork(ctx).Where("challenge = ?", challenge).First(&dgr); err != nil {
+			return sqlcon.HandleError(err)
+		}
+
+		dgr.Accepted = true
+		dgr.AcceptedAt = sqlxx.NullTime(time.Now())
+		dgr.DeviceCodeSignature = sqlxx.NullString(device_code_signature)
+		dgr.ClientID = sqlxx.NullString(client_id)
+		dgr.RequestedScope = sqlxx.StringSlicePipeDelimiter(requested_scopes)
+		dgr.RequestedAudience = sqlxx.StringSlicePipeDelimiter(requested_aud)
+
+		count, err := p.UpdateWithNetwork(ctx, &dgr)
+		if count != 1 {
+			return errorsx.WithStack(x.ErrNotFound)
+		}
+		return err
+	})
+}
+
+func (p *Persister) VerifyAndInvalidateDeviceGrantRequest(ctx context.Context, verifier string) (*consent.DeviceGrantRequest, error) {
+	var d consent.DeviceGrantRequest
+	return &d, p.transaction(ctx, func(ctx context.Context, c *pop.Connection) error {
+		if err := p.QueryWithNetwork(ctx).Where("verifier = ?", verifier).First(&d); err != nil {
+			return sqlcon.HandleError(err)
+		}
+
+		return sqlcon.HandleError(p.QueryWithNetwork(ctx).Where("verifier = ?", verifier).Delete(&d))
+	})
+}
+
 func (p *Persister) CreateLoginRequest(ctx context.Context, req *consent.LoginRequest) error {
 	ctx, span := p.r.Tracer(ctx).Tracer().Start(ctx, "persistence.sql.CreateLoginRequest")
 	defer span.End()

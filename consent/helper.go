@@ -21,7 +21,7 @@ import (
 	"github.com/ory/hydra/v2/client"
 )
 
-func sanitizeClientFromRequest(ar fosite.AuthorizeRequester) *client.Client {
+func sanitizeClientFromRequest(ar fosite.Requester) *client.Client {
 	return sanitizeClient(ar.GetClient().(*client.Client))
 }
 

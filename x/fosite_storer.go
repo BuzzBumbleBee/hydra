@@ -12,14 +12,17 @@ import (
 	"github.com/ory/fosite/handler/openid"
 	"github.com/ory/fosite/handler/pkce"
 	"github.com/ory/fosite/handler/rfc7523"
+	"github.com/ory/fosite/handler/rfc8628"
 )
 
 type FositeStorer interface {
 	fosite.Storage
 	oauth2.CoreStorage
+	oauth2.AuthorizeCodeStorage
 	openid.OpenIDConnectRequestStorage
 	pkce.PKCERequestStorage
 	rfc7523.RFC7523KeyStorage
+	rfc8628.RFC8628CodeStorage
 
 	RevokeRefreshToken(ctx context.Context, requestID string) error
 

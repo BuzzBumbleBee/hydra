@@ -7,6 +7,7 @@ api_jwk.go
 api_metadata.go
 api_o_auth2.go
 api_oidc.go
+api_v0alpha2.go
 api_wellknown.go
 client.go
 configuration.go
@@ -14,6 +15,8 @@ docs/AcceptOAuth2ConsentRequest.md
 docs/AcceptOAuth2ConsentRequestSession.md
 docs/AcceptOAuth2LoginRequest.md
 docs/CreateJsonWebKeySet.md
+docs/DeviceAuthorization.md
+docs/DeviceGrantRequest.md
 docs/ErrorOAuth2.md
 docs/GenericError.md
 docs/GetVersion200Response.md
@@ -51,6 +54,8 @@ docs/TokenPaginationResponseHeaders.md
 docs/TrustOAuth2JwtGrantIssuer.md
 docs/TrustedOAuth2JwtGrantIssuer.md
 docs/TrustedOAuth2JwtGrantJsonWebKey.md
+docs/V0alpha2Api.md
+docs/VerifyUserCodeRequest.md
 docs/Version.md
 docs/WellknownApi.md
 git_push.sh
@@ -60,6 +65,8 @@ model_accept_o_auth2_consent_request.go
 model_accept_o_auth2_consent_request_session.go
 model_accept_o_auth2_login_request.go
 model_create_json_web_key_set.go
+model_device_authorization.go
+model_device_grant_request.go
 model_error_o_auth2.go
 model_generic_error.go
 model_get_version_200_response.go
@@ -93,6 +100,7 @@ model_token_pagination_response_headers.go
 model_trust_o_auth2_jwt_grant_issuer.go
 model_trusted_o_auth2_jwt_grant_issuer.go
 model_trusted_o_auth2_jwt_grant_json_web_key.go
+model_verify_user_code_request.go
 model_version.go
 response.go
 utils.go
